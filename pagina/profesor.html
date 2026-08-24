@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+        <title>Panel Profesor</title>
+        <style>
+            body {
+                margin: 0;
+                background: #f3f5f7;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .layout {
+                width: min(1200px, 96vw);
+                margin: 24px auto;
+            }
+
+            .card {
+                border: 1px solid #d7dee3;
+                border-radius: 12px;
+                background: #fff;
+                padding: 24px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            }
+
+            h1 {
+                margin: 0 0 10px;
+            }
+
+            p {
+                margin: 0 0 14px;
+                color: #475569;
+            }
+
+            .filters {
+                display: grid;
+                grid-template-columns: 2fr 1fr auto;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+
+            select,
+            button {
+                border: 1px solid #d7dee3;
+                border-radius: 8px;
+                padding: 9px 10px;
+                font-size: 0.95rem;
+            }
+
+            button {
+                background: #2e8322;
+                color: #fff;
+                font-weight: 700;
+                border: none;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background: #25681b;
+            }
+
+            .group {
+                margin-top: 14px;
+                border: 1px solid #dbe2e8;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .group h3 {
+                margin: 0;
+                padding: 10px 12px;
+                background: #eef4f8;
+                font-size: 1rem;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            th,
+            td {
+                border: 1px solid #dde5eb;
+                padding: 8px;
+                text-align: left;
+                font-size: 0.9rem;
+                vertical-align: top;
+            }
+
+            th {
+                background: #f6fafc;
+            }
+
+            .section-title {
+                margin-top: 22px;
+            }
+
+            .status {
+                min-height: 20px;
+                margin-top: 8px;
+                color: #7f1d1d;
+            }
+
+            .ok {
+                color: #166534;
+            }
+
+            .action-btn {
+                width: auto;
+                padding: 6px 10px;
+                font-size: 0.82rem;
+            }
+
+            a {
+                color: #2e8322;
+                text-decoration: none;
+                font-weight: 700;
+            }
+
+            a:hover {
+                text-decoration: underline;
+            }
+
+            .table-scroll {
+                overflow-x: auto;
+            }
+
+            .btn-postular {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 6px 10px;
+                border-radius: 8px;
+                background: #2e8322;
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 12px;
+                line-height: 1;
+                text-decoration: none;
+                transition:
+                    background 0.2s ease,
+                    transform 0.2s ease;
+            }
+
+            .btn-postular:hover,
+            .btn-postular:focus {
+                background: #25681b;
+                color: #ffffff;
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
+            .logout-btn {
+                position: fixed;
+                left: 16px;
+                bottom: 16px;
+                z-index: 50;
+            }
+
+            @media (max-width: 900px) {
+                .filters {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main class="layout">
+            <section class="card">
+                <h1>Panel Profesor</h1>
+                <p>
+                    Selecciona un ramo y revisa las postulaciones agrupadas por
+                    tipo de ayudante.
+                </p>
+
+                <form id="filtroForm" class="filters">
+                    <select id="ramoSelect" required></select>
+                    <select id="orderSelect">
+                        <option value="fecha">Ordenar por fecha</option>
+                        <option value="nombre">Ordenar por nombre</option>
+                        <option value="estado">Ordenar por estado</option>
+                    </select>
+                    <button type="submit">Cargar postulaciones</button>
+                </form>
+
+                <div id="status" class="status"></div>
+
+                <div id="agrupadasContainer"></div>
+
+                <h2 class="section-title">Ayudantes seleccionados</h2>
+                <div id="seleccionadosContainer"></div>
+
+                <a class="btn-postular logout-btn" href="/">Cerrar Sesión</a>
+            </section>
+        </main>
+
+        <script src="/utils.js"></script>
+        <script>
+            const filtroForm = document.getElementById("filtroForm");
+            const ramoSelect = document.getElementById("ramoSelect");
+            const orderSelect = document.getElementById("orderSelect");
+            const statusEl = document.getElementById("status");
+            const agrupadasContainer =
+                document.getElementById("agrupadasContainer");
+            const seleccionadosContainer = document.getElementById(
+                "seleccionadosContainer",
+            );
+
+            async function cargarRamos() {
+                const response = await fetch("/api/profesor/ramos");
+                const data = await response.json();
+
+                const opciones = [
+                    { value: "todas-docentes:0", label: "Ayudantía docente" },
+                    {
+                        value: "todas-administrativas:0",
+                        label: "Ayudantía administrativa",
+                    },
+                    { type: "divider" },
+                ];
+
+                data.forEach((item) => {
+                    const value = `${item.fuente}:${item.ayudantia_id}`;
+                    const codigo = item.codigo ? `${item.codigo} - ` : "";
+                    const label =
+                        item.fuente === "administrativa"
+                            ? `Postulados Ayudantía administrativa (${codigo}${item.ramo})`
+                            : `${codigo}${item.ramo} (${item.tipo_ayudantia})`;
+                    opciones.push({ value, label, type: "option" });
+                });
+
+                ramoSelect.innerHTML = opciones
+                    .map((opt) => {
+                        if (opt.type === "divider") {
+                            return '<optgroup label="Ramos específicos"></optgroup>';
+                        }
+                        return `<option value="${opt.value}">${escapeHtml(opt.label)}</option>`;
+                    })
+                    .join("");
+            }
+
+            function renderTabla(
+                rows,
+                includeAction = false,
+                actionText = "Seleccionar entrevista",
+                actionClass = "action-btn",
+                showAsignatura = false,
+            ) {
+                if (!rows || rows.length === 0) {
+                    return '<p style="margin: 10px 0; color: #64748b;">Sin registros.</p>';
+                }
+
+                return `
+          <div class="table-scroll"><table>
+            <thead>
+              <tr>
+                ${showAsignatura ? "<th>Asignatura/Glosa</th>" : ""}
+                <th>Estudiante</th>
+                <th>Email</th>
+                <th>Motivación</th>
+                <th>Documentos</th>
+                <th>Estado</th>
+                <th>Fecha Estado</th>
+                ${includeAction ? "<th>Acción</th>" : ""}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                  .map(
+                      (item) => `
+                <tr>
+                  ${showAsignatura ? `<td>${escapeHtml(item.asignatura || item.glosa || "-")}</td>` : ""}
+                  <td>${escapeHtml(item.nombre_estudiante)}</td>
+                  <td>${escapeHtml(item.email_estudiante)}</td>
+                  <td>${escapeHtml(item.motivacion)}</td>
+                  <td>${escapeHtml(item.documentos)}</td>
+                  <td>${escapeHtml(item.estado)}</td>
+                  <td>${escapeHtml(new Date(item.fecha_estado).toLocaleString())}</td>
+                  ${includeAction ? `<td><button class="${escapeHtml(actionClass)}" data-fuente="${escapeHtml(item.fuente)}" data-id="${escapeHtml(item.postulacion_id)}">${escapeHtml(actionText)}</button></td>` : ""}
+                </tr>
+              `,
+                  )
+                  .join("")}
+            </tbody>
+          </table></div>
+        `;
+            }
+
+            function renderAgrupadas(agrupados, isGeneralFilter = false) {
+                if (!agrupados || Object.keys(agrupados).length === 0) {
+                    agrupadasContainer.innerHTML =
+                        '<p style="color:#64748b;">No hay postulantes para este filtro.</p>';
+                    return;
+                }
+
+                const sections = [];
+                Object.entries(agrupados).forEach(([key, rows]) => {
+                    sections.push({ title: key, rows });
+                });
+
+                agrupadasContainer.innerHTML = sections
+                    .map(
+                        (s) => `
+            <section class="group">
+              <h3>${escapeHtml(s.title)}</h3>
+              <div style="padding: 10px;">${renderTabla(s.rows, true, "Seleccionar entrevista", "action-btn", isGeneralFilter)}</div>
+            </section>
+          `,
+                    )
+                    .join("");
+            }
+
+            function renderSeleccionados(rows, showAsignatura = false) {
+                // Mostrar botón para desseleccionar en la lista de seleccionados
+                seleccionadosContainer.innerHTML = renderTabla(
+                    rows,
+                    true,
+                    "Deseleccionar entrevista",
+                    "deselect-btn",
+                    showAsignatura,
+                );
+            }
+
+            async function cargarPostulaciones() {
+                statusEl.textContent = "";
+                statusEl.classList.remove("ok");
+
+                const value = ramoSelect.value;
+                if (!value) return;
+
+                const [tipoFiltro, ayudantiaId] = value.split(":");
+                const orderBy = orderSelect.value;
+                let url;
+
+                if (tipoFiltro === "todas-docentes") {
+                    url = `/api/profesor/postulaciones/todas-docentes?orderBy=${encodeURIComponent(orderBy)}`;
+                } else if (tipoFiltro === "todas-administrativas") {
+                    url = `/api/profesor/postulaciones/todas-administrativas?orderBy=${encodeURIComponent(orderBy)}`;
+                } else {
+                    url = `/api/profesor/postulaciones?fuente=${encodeURIComponent(tipoFiltro)}&ayudantiaId=${encodeURIComponent(ayudantiaId)}&orderBy=${encodeURIComponent(orderBy)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+                if (!response.ok) {
+                    statusEl.textContent =
+                        data.error || "No se pudieron cargar postulaciones";
+                    agrupadasContainer.innerHTML = "";
+                    seleccionadosContainer.innerHTML = "";
+                    return;
+                }
+
+                const isGeneralFilter =
+                    tipoFiltro === "todas-docentes" ||
+                    tipoFiltro === "todas-administrativas";
+                renderAgrupadas(data.agrupados, isGeneralFilter);
+                renderSeleccionados(data.seleccionados, isGeneralFilter);
+            }
+
+            document.addEventListener("click", async (event) => {
+                // Seleccionar entrevista
+                const selBtn = event.target.closest(".action-btn");
+                if (selBtn) {
+                    const fuente = selBtn.dataset.fuente;
+                    const postulacionId = selBtn.dataset.id;
+
+                    const response = await fetch(
+                        "/api/profesor/postulaciones/seleccionar",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ fuente, postulacionId }),
+                        },
+                    );
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        statusEl.textContent =
+                            data.error || "No se pudo seleccionar";
+                        statusEl.classList.remove("ok");
+                        return;
+                    }
+
+                    statusEl.textContent = data.message;
+                    statusEl.classList.add("ok");
+                    await cargarPostulaciones();
+                    return;
+                }
+
+                // Deseleccionar entrevista
+                const deselBtn = event.target.closest(".deselect-btn");
+                if (deselBtn) {
+                    const fuente = deselBtn.dataset.fuente;
+                    const postulacionId = deselBtn.dataset.id;
+                    console.log("Deseleccionar clicked", {
+                        fuente,
+                        postulacionId,
+                    });
+
+                    try {
+                        const response = await fetch(
+                            "/api/profesor/postulaciones/deseleccionar",
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ fuente, postulacionId }),
+                            },
+                        );
+                        const data = await response.json();
+                        console.log(
+                            "Deseleccionar response",
+                            response.status,
+                            data,
+                        );
+
+                        if (!response.ok) {
+                            statusEl.textContent =
+                                data.error || "No se pudo desseleccionar";
+                            statusEl.classList.remove("ok");
+                            return;
+                        }
+
+                        statusEl.textContent =
+                            data.message || "Selección revertida";
+                        statusEl.classList.add("ok");
+
+                        // Eliminar visualmente la fila de seleccionados inmediatamente
+                        deselBtn.closest("tr")?.remove();
+
+                        // Verificar si la tabla de seleccionados quedó vacía
+                        const tbody =
+                            seleccionadosContainer.querySelector("tbody");
+                        if (tbody && tbody.rows.length === 0) {
+                            seleccionadosContainer.innerHTML =
+                                '<p style="margin: 10px 0; color: #64748b;">Sin registros.</p>';
+                        }
+
+                        // Recargar la lista de postulantes después de 500ms para que vea la fila reaparecer
+                        setTimeout(() => {
+                            cargarPostulaciones();
+                        }, 500);
+                    } catch (err) {
+                        console.error("Error en deseleccionar:", err);
+                        statusEl.textContent = "Error al desseleccionar";
+                        statusEl.classList.remove("ok");
+                    }
+
+                    return;
+                }
+            });
+
+            ramoSelect.addEventListener("change", cargarPostulaciones);
+            orderSelect.addEventListener("change", cargarPostulaciones);
+
+            filtroForm.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                await cargarPostulaciones();
+            });
+
+            (async () => {
+                await cargarRamos();
+                await cargarPostulaciones();
+            })();
+        </script>
+    </body>
+</html>

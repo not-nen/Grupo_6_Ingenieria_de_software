@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+        <title>Registro</title>
+        <style>
+            :root {
+                --bg: #f4f7fb;
+                --card: #ffffff;
+                --border: #d9e2ec;
+                --primary: #2e8322;
+                --primary-hover: #25681b;
+                --text: #1f2937;
+                --muted: #6b7280;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                background: linear-gradient(135deg, #eaf2f8, var(--bg));
+                color: var(--text);
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .layout {
+                width: min(520px, 94vw);
+            }
+
+            .card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 18px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            }
+
+            h1 {
+                margin: 0 0 8px;
+                font-size: 1.4rem;
+            }
+
+            p {
+                margin: 0 0 14px;
+                color: var(--muted);
+            }
+
+            .field {
+                margin-bottom: 10px;
+            }
+
+            label {
+                display: block;
+                font-size: 0.9rem;
+                margin-bottom: 4px;
+            }
+
+            input,
+            select,
+            button {
+                width: 100%;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                padding: 9px 10px;
+                font-size: 0.95rem;
+            }
+
+            button {
+                margin-top: 4px;
+                border: none;
+                background: var(--primary);
+                color: #fff;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background: var(--primary-hover);
+            }
+
+            .status {
+                margin-top: 10px;
+                min-height: 20px;
+                font-size: 0.9rem;
+                color: #7f1d1d;
+            }
+
+            .secondary-link {
+                display: inline-block;
+                margin-top: 10px;
+                color: #25681b;
+                font-weight: 700;
+                text-decoration: none;
+            }
+
+            .secondary-link:hover {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="layout">
+            <section class="card">
+                <h1>Registro</h1>
+                <p>Crea tu cuenta como estudiante, profesor o administrador.</p>
+                <form id="registerForm">
+                    <div class="field">
+                        <label for="registerRole">Rol</label>
+                        <select id="registerRole" name="role" required>
+                            <option value="estudiante">Estudiante</option>
+                            <option value="profesor">Profesor</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="registerNombre">Nombre</label>
+                        <input
+                            id="registerNombre"
+                            name="nombre"
+                            type="text"
+                            required
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="registerEmail">Email</label>
+                        <input
+                            id="registerEmail"
+                            name="email"
+                            type="email"
+                            required
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="registerPassword">Contraseña</label>
+                        <input
+                            id="registerPassword"
+                            name="password"
+                            type="password"
+                            required
+                        />
+                    </div>
+                    <button type="submit">Registrarme</button>
+                    <div class="status" id="registerStatus"></div>
+                </form>
+                <a class="secondary-link" href="/">Volver al login</a>
+            </section>
+        </main>
+
+        <script>
+            async function submitForm(url, form, statusElement) {
+                statusElement.textContent = "";
+                const payload = Object.fromEntries(
+                    new FormData(form).entries(),
+                );
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    statusElement.textContent =
+                        data.error || "Ocurrió un error";
+                    return;
+                }
+
+                if (data.currentUser) {
+                    localStorage.setItem(
+                        "currentUser",
+                        JSON.stringify(data.currentUser),
+                    );
+                    sessionStorage.setItem(
+                        "currentUser",
+                        JSON.stringify(data.currentUser),
+                    );
+                }
+
+                window.location.href = data.redirect;
+            }
+
+            document
+                .getElementById("registerForm")
+                .addEventListener("submit", async (e) => {
+                    e.preventDefault();
+                    await submitForm(
+                        "/api/register",
+                        e.target,
+                        document.getElementById("registerStatus"),
+                    );
+                });
+        </script>
+    </body>
+</html>

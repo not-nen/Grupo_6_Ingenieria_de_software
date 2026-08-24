@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <title>Tabla de Mensajes</title>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+
+        <link
+            href="https://fonts.googleapis.com/css?family=Roboto:400,100,300,700"
+            rel="stylesheet"
+            type="text/css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        />
+        <link rel="stylesheet" href="/template_tabla/css/style.css" />
+        <style>
+            :root {
+                --accent-green: #668c61;
+                --accent-green-hover: #21451b;
+
+                /* Ajusta estos porcentajes por columna (ideal: suma cercana a 100%) */
+                --w-preferencia: 7%;
+                --w-emplazamiento: 9%;
+                --w-departamento: 8%;
+                --w-asignatura: 11%;
+                --w-par: 4%;
+                --w-categoria: 5%;
+                --w-inicio: 6%;
+                --w-termino: 6%;
+                --w-horas: 4%;
+                --w-info: 4%;
+                --w-estado: 7%;
+                --w-fecha-estado: 8%;
+                --w-eliminar: 5%;
+                --w-respuesta: 7%;
+                --w-renunciar: 9%;
+
+                /* Anchos distintos para la segunda tabla */
+                --w-admin-codigo: 6%;
+                --w-admin-modificado: 5%;
+                --w-admin-glosa: 13%;
+                --w-admin-emplazamiento: 8%;
+                --w-admin-departamento: 11%;
+                --w-admin-tipo: 11%;
+                --w-admin-inicio: 6%;
+                --w-admin-termino: 6%;
+                --w-admin-horas: 4%;
+                --w-admin-info: 4%;
+                --w-admin-estado: 6%;
+                --w-admin-fecha: 8%;
+                --w-admin-eliminar: 4%;
+                --w-admin-respuesta: 5%;
+                --w-admin-renunciar: 3%;
+            }
+
+            html,
+            body {
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            .ftco-section {
+                padding: 24px 0;
+            }
+
+            .card {
+                border: 1px solid #cfd8dc;
+            }
+
+            .card-header {
+                border-bottom: 1px solid #cfd8dc;
+            }
+
+            .card-body {
+                padding: 10px !important;
+            }
+
+            .accordion-btn {
+                background: var(--accent-green);
+                color: #fff;
+                text-decoration: none;
+                font-weight: 700;
+                padding: 14px 18px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .accordion-btn:hover,
+            .accordion-btn:focus {
+                color: #fff;
+                text-decoration: none;
+            }
+
+            .accordion-btn::before {
+                content: "\25BC";
+                font-size: 12px;
+                line-height: 1;
+                transition: transform 0.2s ease;
+                flex: 0 0 auto;
+            }
+
+            .accordion-btn.collapsed::before {
+                content: "\25B6";
+            }
+
+            .tabla-postulaciones {
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+            }
+
+            .tabla-postulaciones {
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .tabla-postulaciones th,
+            .tabla-postulaciones td {
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                font-size: 12px;
+                line-height: 1.3;
+                padding: 8px;
+                vertical-align: middle;
+                border: 1px solid #d9d9d9 !important;
+                text-align: center;
+            }
+
+            .tabla-postulaciones th {
+                line-height: 1.15;
+            }
+
+            .table-responsive-wrap {
+                overflow-x: auto;
+            }
+
+            .tabla-postulaciones thead.thead-primary th {
+                text-transform: none;
+                background: #f4f7fa;
+                font-weight: 700;
+                text-align: center;
+                color: #0f1011 !important;
+                padding: 6px 4px;
+                font-size: 12px;
+            }
+
+            .tabla-postulaciones tbody td {
+                color: #1f2937;
+                padding: 6px 4px;
+                font-size: 12px;
+            }
+
+            .actions-row {
+                display: flex;
+                justify-content: flex-end;
+                margin-top: 10px;
+                padding: 0;
+            }
+
+            .top-actions {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 10px;
+            }
+
+            .logout-btn {
+                position: fixed;
+                left: 16px;
+                bottom: 16px;
+                z-index: 50;
+            }
+
+            .btn-postular {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 6px 10px;
+                border-radius: 8px;
+                background: var(--accent-green);
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 12px;
+                line-height: 1;
+                text-decoration: none;
+                transition:
+                    background 0.2s ease,
+                    transform 0.2s ease;
+            }
+
+            .btn-postular:hover,
+            .btn-postular:focus {
+                background: var(--accent-green-hover);
+                color: #ffffff;
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
+            .empty-state td {
+                padding: 20px 12px;
+                color: #6b7280;
+                font-weight: 600;
+                text-align: center;
+            }
+
+            .col-preferencia {
+                width: var(--w-preferencia);
+            }
+            .col-emplazamiento {
+                width: var(--w-emplazamiento);
+            }
+            .col-departamento {
+                width: var(--w-departamento);
+            }
+            .col-asignatura {
+                width: var(--w-asignatura);
+            }
+            .col-par {
+                width: var(--w-par);
+            }
+            .col-categoria {
+                width: var(--w-categoria);
+            }
+            .col-inicio {
+                width: var(--w-inicio);
+            }
+            .col-termino {
+                width: var(--w-termino);
+            }
+            .col-horas {
+                width: var(--w-horas);
+            }
+            .col-info {
+                width: var(--w-info);
+            }
+            .col-estado {
+                width: var(--w-estado);
+            }
+            .col-fecha-estado {
+                width: var(--w-fecha-estado);
+            }
+            .col-eliminar {
+                width: var(--w-eliminar);
+            }
+            .col-respuesta {
+                width: var(--w-respuesta);
+            }
+            .col-renunciar {
+                width: var(--w-renunciar);
+            }
+
+            .tabla-postulaciones-admin .col-admin-codigo {
+                width: var(--w-admin-codigo);
+            }
+            .tabla-postulaciones-admin .col-admin-modificado {
+                width: var(--w-admin-modificado);
+            }
+            .tabla-postulaciones-admin .col-admin-glosa {
+                width: var(--w-admin-glosa);
+            }
+            .tabla-postulaciones-admin .col-admin-emplazamiento {
+                width: var(--w-admin-emplazamiento);
+            }
+            .tabla-postulaciones-admin .col-admin-departamento {
+                width: var(--w-admin-departamento);
+            }
+            .tabla-postulaciones-admin .col-admin-tipo {
+                width: var(--w-admin-tipo);
+            }
+            .tabla-postulaciones-admin .col-admin-inicio {
+                width: var(--w-admin-inicio);
+            }
+            .tabla-postulaciones-admin .col-admin-termino {
+                width: var(--w-admin-termino);
+            }
+            .tabla-postulaciones-admin .col-admin-horas {
+                width: var(--w-admin-horas);
+            }
+            .tabla-postulaciones-admin .col-admin-info {
+                width: var(--w-admin-info);
+            }
+            .tabla-postulaciones-admin .col-admin-estado {
+                width: var(--w-admin-estado);
+            }
+            .tabla-postulaciones-admin .col-admin-fecha {
+                width: var(--w-admin-fecha);
+            }
+            .tabla-postulaciones-admin .col-admin-eliminar {
+                width: var(--w-admin-eliminar);
+            }
+            .tabla-postulaciones-admin .col-admin-respuesta {
+                width: var(--w-admin-respuesta);
+            }
+            .tabla-postulaciones-admin .col-admin-renunciar {
+                width: var(--w-admin-renunciar);
+            }
+
+            @media (max-width: 1200px) {
+                .tabla-postulaciones th,
+                .tabla-postulaciones td {
+                    font-size: 11px;
+                    padding: 6px 5px;
+                }
+            }
+
+            @media (min-width: 1201px) {
+                .tabla-postulaciones th,
+                .tabla-postulaciones td {
+                    min-width: 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <section class="ftco-section">
+            <div class="container-fluid px-2 px-md-4">
+                <div class="top-actions">
+                    <a class="btn-postular" href="/registro-horas"
+                        >Registrar horas de trabajo</a
+                    >
+                </div>
+                <a class="btn-postular logout-btn" href="/">Cerrar Sesión</a>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="accordion" id="accordionPostulaciones">
+                            <div class="card">
+                                <div
+                                    class="card-header p-0"
+                                    id="headingPostulaciones"
+                                >
+                                    <h2 class="mb-0">
+                                        <button
+                                            class="btn btn-link btn-block text-left accordion-btn"
+                                            type="button"
+                                            data-toggle="collapse"
+                                            data-target="#collapsePostulaciones"
+                                            aria-expanded="true"
+                                            aria-controls="collapsePostulaciones"
+                                        >
+                                            Postulaciones Ayudantía docente
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div
+                                    id="collapsePostulaciones"
+                                    class="collapse show"
+                                    aria-labelledby="headingPostulaciones"
+                                >
+                                    <div class="card-body">
+                                        <div class="table-responsive-wrap">
+                                            <table
+                                                class="table table-bordered table-hover mb-0 tabla-postulaciones"
+                                            >
+                                                <colgroup>
+                                                    <col
+                                                        class="col-preferencia"
+                                                    />
+                                                    <col
+                                                        class="col-emplazamiento"
+                                                    />
+                                                    <col
+                                                        class="col-departamento"
+                                                    />
+                                                    <col
+                                                        class="col-asignatura"
+                                                    />
+                                                    <col class="col-par" />
+                                                    <col
+                                                        class="col-categoria"
+                                                    />
+                                                    <col class="col-inicio" />
+                                                    <col class="col-termino" />
+                                                    <col class="col-horas" />
+                                                    <col class="col-info" />
+                                                    <col class="col-estado" />
+                                                    <col
+                                                        class="col-fecha-estado"
+                                                    />
+                                                    <col class="col-eliminar" />
+                                                    <col
+                                                        class="col-respuesta"
+                                                    />
+                                                    <col
+                                                        class="col-renunciar"
+                                                    />
+                                                </colgroup>
+                                                <thead class="thead-primary">
+                                                    <tr>
+                                                        <th>Preferencia</th>
+                                                        <th>Emplazamiento</th>
+                                                        <th>Departamento</th>
+                                                        <th>Asignatura</th>
+                                                        <th>Par.</th>
+                                                        <th>Categoria</th>
+                                                        <th>Inicio</th>
+                                                        <th>Termino</th>
+                                                        <th>Horas</th>
+                                                        <th>Info.</th>
+                                                        <th>Estado</th>
+                                                        <th>Fecha Estado</th>
+                                                        <th>Eliminar</th>
+                                                        <th>Respuesta</th>
+                                                        <th>Renunciar</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="docenteBody">
+                                                    <tr class="empty-state">
+                                                        <td colspan="15">
+                                                            Cargando
+                                                            postulaciones...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="actions-row">
+                                            <a
+                                                class="btn-postular"
+                                                href="/postula-docente"
+                                                >Añadir postulación</a
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mt-3">
+                                <div
+                                    class="card-header p-0"
+                                    id="headingPostulacionesAdmin"
+                                >
+                                    <h2 class="mb-0">
+                                        <button
+                                            class="btn btn-link btn-block text-left accordion-btn collapsed"
+                                            type="button"
+                                            data-toggle="collapse"
+                                            data-target="#collapsePostulacionesAdmin"
+                                            aria-expanded="false"
+                                            aria-controls="collapsePostulacionesAdmin"
+                                        >
+                                            Postulaciones Ayudantía
+                                            administrativa
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div
+                                    id="collapsePostulacionesAdmin"
+                                    class="collapse"
+                                    aria-labelledby="headingPostulacionesAdmin"
+                                >
+                                    <div class="card-body">
+                                        <div class="table-responsive-wrap">
+                                            <table
+                                                class="table table-bordered table-hover mb-0 tabla-postulaciones tabla-postulaciones-admin"
+                                            >
+                                                <colgroup>
+                                                    <col
+                                                        class="col-admin-codigo"
+                                                    />
+                                                    <col
+                                                        class="col-admin-modificado"
+                                                    />
+                                                    <col
+                                                        class="col-admin-glosa"
+                                                    />
+                                                    <col
+                                                        class="col-admin-emplazamiento"
+                                                    />
+                                                    <col
+                                                        class="col-admin-departamento"
+                                                    />
+                                                    <col
+                                                        class="col-admin-tipo"
+                                                    />
+                                                    <col
+                                                        class="col-admin-inicio"
+                                                    />
+                                                    <col
+                                                        class="col-admin-termino"
+                                                    />
+                                                    <col
+                                                        class="col-admin-horas"
+                                                    />
+                                                    <col
+                                                        class="col-admin-info"
+                                                    />
+                                                    <col
+                                                        class="col-admin-estado"
+                                                    />
+                                                    <col
+                                                        class="col-admin-fecha"
+                                                    />
+                                                    <col
+                                                        class="col-admin-eliminar"
+                                                    />
+                                                    <col
+                                                        class="col-admin-respuesta"
+                                                    />
+                                                    <col
+                                                        class="col-admin-renunciar"
+                                                    />
+                                                </colgroup>
+                                                <thead class="thead-primary">
+                                                    <tr>
+                                                        <th>Código</th>
+                                                        <th>Modificado</th>
+                                                        <th>Glosa</th>
+                                                        <th>Emplazamiento</th>
+                                                        <th>Departamento</th>
+                                                        <th>Tipo Ayudantía</th>
+                                                        <th>Inicio</th>
+                                                        <th>Término</th>
+                                                        <th>Horas</th>
+                                                        <th>Info.</th>
+                                                        <th>Estado</th>
+                                                        <th>Fecha Estado</th>
+                                                        <th>Eliminar</th>
+                                                        <th>Respuesta</th>
+                                                        <th>Renunciar</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="administrativaBody">
+                                                    <tr class="empty-state">
+                                                        <td colspan="15">
+                                                            Cargando
+                                                            postulaciones...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="actions-row">
+                                            <a
+                                                class="btn-postular"
+                                                href="/postula-administrativa"
+                                                >Añadir postulación</a
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <script>
+            const docenteBody = document.getElementById("docenteBody");
+            const administrativaBody =
+                document.getElementById("administrativaBody");
+
+            function escapeHtml(value) {
+                return String(value ?? "")
+                    .replaceAll("&", "&amp;")
+                    .replaceAll("<", "&lt;")
+                    .replaceAll(">", "&gt;")
+                    .replaceAll('"', "&quot;")
+                    .replaceAll("'", "&#39;");
+            }
+
+            function formatDate(value) {
+                if (!value) return "-";
+                const date = new Date(value);
+                return Number.isNaN(date.getTime())
+                    ? "-"
+                    : date.toLocaleString();
+            }
+
+            function formatYesNo(value) {
+                return value ? "Si" : "No";
+            }
+
+            function renderEmptyRow(message) {
+                return `<tr class="empty-state"><td colspan="15">${escapeHtml(message)}</td></tr>`;
+            }
+
+            function renderDocenteRows(rows) {
+                if (!rows || rows.length === 0) {
+                    docenteBody.innerHTML = renderEmptyRow(
+                        "No tienes ninguna postulación hasta el momento",
+                    );
+                    return;
+                }
+
+                docenteBody.innerHTML = rows
+                    .map(
+                        (item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(item.emplazamiento)}</td>
+            <td>${escapeHtml(item.departamento)}</td>
+            <td>${escapeHtml(item.asignatura)}</td>
+            <td>${escapeHtml(item.paralelo)}</td>
+            <td>${escapeHtml(item.categoria)}</td>
+            <td>---</td>
+            <td>---</td>
+            <td>${escapeHtml(item.horas)}</td>
+            <td>${escapeHtml(item.info || "Ver")}</td>
+            <td>${escapeHtml(item.estado)}</td>
+            <td>${escapeHtml(formatDate(item.fecha_estado))}</td>
+            <td>No</td>
+            <td>${escapeHtml(item.respuesta || "-")}</td>
+            <td>No</td>
+          </tr>
+        `,
+                    )
+                    .join("");
+            }
+
+            function renderAdministrativaRows(rows) {
+                if (!rows || rows.length === 0) {
+                    administrativaBody.innerHTML = renderEmptyRow(
+                        "No tienes ninguna postulación hasta el momento",
+                    );
+                    return;
+                }
+
+                administrativaBody.innerHTML = rows
+                    .map(
+                        (item) => `
+          <tr>
+            <td>${escapeHtml(item.codigo)}</td>
+            <td>${formatYesNo(item.modificado)}</td>
+            <td>${escapeHtml(item.glosa)}</td>
+            <td>${escapeHtml(item.emplazamiento)}</td>
+            <td>${escapeHtml(item.departamento)}</td>
+            <td>${escapeHtml(item.tipo_ayudantia)}</td>
+            <td>---</td>
+            <td>---</td>
+            <td>${escapeHtml(item.horas)}</td>
+            <td>${escapeHtml(item.info || "Ver")}</td>
+            <td>${escapeHtml(item.estado)}</td>
+            <td>${escapeHtml(formatDate(item.fecha_estado))}</td>
+            <td>No</td>
+            <td>${escapeHtml(item.respuesta || "-")}</td>
+            <td>No</td>
+          </tr>
+        `,
+                    )
+                    .join("");
+            }
+
+            async function cargarPostulacionesEstudiante() {
+                docenteBody.innerHTML = renderEmptyRow(
+                    "Cargando postulaciones...",
+                );
+                administrativaBody.innerHTML = renderEmptyRow(
+                    "Cargando postulaciones...",
+                );
+
+                try {
+                    const controller = new AbortController();
+                    const timeoutMs = 10000; // 10s
+                    const timeoutId = setTimeout(
+                        () => controller.abort(),
+                        timeoutMs,
+                    );
+
+                    const response = await fetch(
+                        "/api/estudiante/postulaciones",
+                        {
+                            credentials: "same-origin",
+                            signal: controller.signal,
+                        },
+                    );
+
+                    clearTimeout(timeoutId);
+
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (err) {
+                        docenteBody.innerHTML = renderEmptyRow(
+                            "Respuesta inválida del servidor",
+                        );
+                        administrativaBody.innerHTML = renderEmptyRow(
+                            "Respuesta inválida del servidor",
+                        );
+                        console.error(
+                            "JSON parse error en /api/estudiante/postulaciones",
+                            err,
+                        );
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        const message =
+                            data.error ||
+                            "No se pudieron cargar tus postulaciones";
+                        docenteBody.innerHTML = renderEmptyRow(message);
+                        administrativaBody.innerHTML = renderEmptyRow(message);
+                        return;
+                    }
+
+                    renderDocenteRows(data.docente);
+                    renderAdministrativaRows(data.administrativa);
+                } catch (err) {
+                    const message =
+                        err.name === "AbortError"
+                            ? "La carga tardó demasiado; intenta recargar la página."
+                            : "Error de red al cargar postulaciones";
+                    docenteBody.innerHTML = renderEmptyRow(message);
+                    administrativaBody.innerHTML = renderEmptyRow(message);
+                    console.error(
+                        "Error en cargarPostulacionesEstudiante:",
+                        err,
+                    );
+                }
+            }
+
+            cargarPostulacionesEstudiante();
+        </script>
+
+        <script src="/template_tabla/js/jquery.min.js"></script>
+        <script src="/template_tabla/js/popper.js"></script>
+        <script src="/template_tabla/js/bootstrap.min.js"></script>
+        <script src="/template_tabla/js/main.js"></script>
+    </body>
+</html>

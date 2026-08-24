@@ -1,0 +1,1578 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <title>Panel Administrador</title>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+
+        <link
+            href="https://fonts.googleapis.com/css?family=Roboto:400,100,300,700"
+            rel="stylesheet"
+            type="text/css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        />
+        <link rel="stylesheet" href="/template_tabla/css/style.css" />
+        <style>
+            :root {
+                /* Color del panel: edita estas dos variables */
+                --dashboard-accent: #6b7280;
+                --dashboard-accent-hover: #4b5563;
+                --accent-green: var(--dashboard-accent);
+                --accent-green-hover: var(--dashboard-accent-hover);
+                --accent-red: #dc2626;
+                --accent-red-hover: #b91c1c;
+
+                --w-codigo: 9%;
+                --w-asignatura: 13%;
+                --w-paralelo: 6%;
+                --w-sede: 11%;
+                --w-depto: 13%;
+                --w-inicio: 8%;
+                --w-termino: 8%;
+                --w-horas: 5%;
+                --w-estado: 9%;
+                --w-acciones: 8%;
+
+                --w-adm-codigo: 9%;
+                --w-adm-glosa: 16%;
+                --w-adm-sede: 11%;
+                --w-adm-depto: 13%;
+                --w-adm-tipo: 10%;
+                --w-adm-inicio: 7%;
+                --w-adm-termino: 7%;
+                --w-adm-horas: 5%;
+                --w-adm-estado: 8%;
+                --w-adm-acciones: 8%;
+            }
+
+            html,
+            body {
+                width: 100%;
+                overflow-x: hidden;
+                background: #f3f5f7;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .ftco-section {
+                padding: 28px 0 80px;
+            }
+
+            /* ---- card overrides ---- */
+            .card {
+                border: 1px solid #d7dee3 !important;
+                border-radius: 12px !important;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+                overflow: hidden;
+            }
+
+            .card-header {
+                border-bottom: 1px solid #d7dee3 !important;
+                background: transparent;
+                padding: 0 !important;
+            }
+
+            .card-body {
+                padding: 16px !important;
+                background: #fff;
+            }
+
+            /* ---- accordion button ---- */
+            .accordion-btn {
+                background: var(--accent-green);
+                color: #fff;
+                text-decoration: none;
+                font-weight: 700;
+                padding: 14px 18px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                border-radius: 0;
+            }
+
+            .accordion-btn:hover,
+            .accordion-btn:focus {
+                color: #fff;
+                text-decoration: none;
+                background: var(--accent-green-hover);
+            }
+
+            .accordion-btn::before {
+                content: "\25BC";
+                font-size: 12px;
+                line-height: 1;
+                transition: transform 0.2s ease;
+                flex: 0 0 auto;
+            }
+
+            .accordion-btn.collapsed::before {
+                content: "\25B6";
+            }
+
+            /* ---- tables ---- */
+            .tabla-admin {
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+            }
+
+            .tabla-admin th,
+            .tabla-admin td {
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                font-size: 12px;
+                line-height: 1.3;
+                padding: 7px 6px;
+                vertical-align: middle;
+                border: 1px solid #d9d9d9 !important;
+                text-align: center;
+            }
+
+            .tabla-admin thead.thead-primary th {
+                background: #f4f7fa;
+                font-weight: 700;
+                color: #0f1011 !important;
+                font-size: 12px;
+                text-transform: none;
+            }
+
+            .tabla-admin tbody td {
+                color: #1f2937;
+            }
+
+            .table-responsive-wrap {
+                overflow-x: auto;
+            }
+
+            .empty-state td {
+                padding: 18px 12px;
+                color: #6b7280;
+                font-weight: 600;
+                text-align: center;
+            }
+
+            /* docente table column widths */
+            .tbl-docente .col-codigo {
+                width: var(--w-codigo);
+            }
+            .tbl-docente .col-asignatura {
+                width: var(--w-asignatura);
+            }
+            .tbl-docente .col-paralelo {
+                width: var(--w-paralelo);
+            }
+            .tbl-docente .col-sede {
+                width: var(--w-sede);
+            }
+            .tbl-docente .col-depto {
+                width: var(--w-depto);
+            }
+            .tbl-docente .col-inicio {
+                width: var(--w-inicio);
+            }
+            .tbl-docente .col-termino {
+                width: var(--w-termino);
+            }
+            .tbl-docente .col-horas {
+                width: var(--w-horas);
+            }
+            .tbl-docente .col-estado {
+                width: var(--w-estado);
+            }
+            .tbl-docente .col-acciones {
+                width: var(--w-acciones);
+            }
+
+            /* administrativa table column widths */
+            .tbl-adm .col-adm-codigo {
+                width: var(--w-adm-codigo);
+            }
+            .tbl-adm .col-adm-glosa {
+                width: var(--w-adm-glosa);
+            }
+            .tbl-adm .col-adm-sede {
+                width: var(--w-adm-sede);
+            }
+            .tbl-adm .col-adm-depto {
+                width: var(--w-adm-depto);
+            }
+            .tbl-adm .col-adm-tipo {
+                width: var(--w-adm-tipo);
+            }
+            .tbl-adm .col-adm-inicio {
+                width: var(--w-adm-inicio);
+            }
+            .tbl-adm .col-adm-termino {
+                width: var(--w-adm-termino);
+            }
+            .tbl-adm .col-adm-horas {
+                width: var(--w-adm-horas);
+            }
+            .tbl-adm .col-adm-estado {
+                width: var(--w-adm-estado);
+            }
+            .tbl-adm .col-adm-acciones {
+                width: var(--w-adm-acciones);
+            }
+
+            /* ---- buttons ---- */
+            .btn-admin {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 7px 14px;
+                border-radius: 8px;
+                background: var(--accent-green);
+                color: #fff;
+                font-weight: 700;
+                font-size: 13px;
+                border: none;
+                cursor: pointer;
+                text-decoration: none;
+                transition:
+                    background 0.2s ease,
+                    transform 0.15s ease;
+            }
+
+            .btn-admin:hover,
+            .btn-admin:focus {
+                background: var(--accent-green-hover);
+                color: #fff;
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
+            .btn-eliminar {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 4px 9px;
+                border-radius: 6px;
+                background: var(--accent-red);
+                color: #fff;
+                font-weight: 700;
+                font-size: 11px;
+                border: none;
+                cursor: pointer;
+                transition: background 0.2s ease;
+            }
+
+            .btn-eliminar:hover,
+            .btn-eliminar:focus {
+                background: var(--accent-red-hover);
+            }
+
+            .logout-btn {
+                position: fixed;
+                left: 16px;
+                bottom: 16px;
+                z-index: 50;
+            }
+
+            /* ---- create form ---- */
+            .form-crear {
+                background: #f8fafc;
+                border: 1px solid #d7dee3;
+                border-radius: 10px;
+                padding: 18px 20px 14px;
+                margin-bottom: 18px;
+            }
+
+            .form-crear h5 {
+                font-size: 14px;
+                font-weight: 700;
+                color: #1f2937;
+                margin-bottom: 14px;
+            }
+
+            .form-crear .form-group label {
+                font-size: 12px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 3px;
+            }
+
+            .form-crear .form-control {
+                font-size: 12px;
+                border-radius: 6px;
+                border: 1px solid #c9d2d9;
+                padding: 5px 8px;
+                height: auto;
+            }
+
+            .form-crear .form-control:focus {
+                border-color: var(--dashboard-accent);
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--dashboard-accent) 20%, transparent);
+                outline: none;
+            }
+
+            /* ---- badges de estado ---- */
+            .badge-estado {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 999px;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.2;
+            }
+
+            .badge-estado.disponible {
+                background: #e5e7eb;
+                color: #374151;
+                border: 1px solid #d1d5db;
+            }
+
+            .badge-estado.otro {
+                background: #f3f4f6;
+                color: #6b7280;
+                border: 1px solid #e5e7eb;
+            }
+
+            .section-subtitle {
+                font-size: 14px;
+                font-weight: 700;
+                color: #374151;
+                margin: 0 0 12px;
+            }
+
+            .paralelo-nuevo {
+                display: none;
+                margin-top: 6px;
+            }
+
+            .paralelo-nuevo.visible {
+                display: block;
+            }
+
+            /* ---- feedback messages ---- */
+            .msg-feedback {
+                display: none;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 7px 12px;
+                border-radius: 7px;
+                margin-top: 10px;
+            }
+
+            .msg-feedback.success {
+                background: #dcfce7;
+                color: #166534;
+                border: 1px solid #86efac;
+                display: block;
+            }
+
+            .msg-feedback.error {
+                background: #fee2e2;
+                color: #991b1b;
+                border: 1px solid #fca5a5;
+                display: block;
+            }
+
+            /* ---- page title ---- */
+            .page-title {
+                font-size: 22px;
+                font-weight: 700;
+                color: #1f2937;
+                margin-bottom: 20px;
+            }
+
+            @media (max-width: 1200px) {
+                .tabla-admin th,
+                .tabla-admin td {
+                    font-size: 11px;
+                    padding: 5px 4px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <section class="ftco-section">
+            <div class="container-fluid px-2 px-md-4">
+                <p class="page-title">Panel Administrador</p>
+                <a class="btn-admin logout-btn" href="/">Cerrar Sesión</a>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="accordion" id="accordionAdmin">
+                            <!-- ===== SECCIÓN 1: DOCENTES ===== -->
+                            <div class="card">
+                                <div class="card-header" id="headingDocente">
+                                    <h2 class="mb-0">
+                                        <button
+                                            class="btn btn-link btn-block text-left accordion-btn"
+                                            type="button"
+                                            data-toggle="collapse"
+                                            data-target="#collapseDocente"
+                                            aria-expanded="true"
+                                            aria-controls="collapseDocente"
+                                        >
+                                            Ayudantías Docentes
+                                        </button>
+                                    </h2>
+                                </div>
+
+                                <div
+                                    id="collapseDocente"
+                                    class="collapse show"
+                                    aria-labelledby="headingDocente"
+                                >
+                                    <div class="card-body">
+                                        <!-- Formulario crear docente -->
+                                        <div class="form-crear">
+                                            <h5>Nueva Ayudantía</h5>
+                                            <form id="formDocente" novalidate>
+                                                <div class="row">
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-codigo"
+                                                                >Código</label
+                                                            >
+                                                            <input
+                                                                id="d-codigo"
+                                                                name="codigo"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Se genera al seleccionar"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-asignatura"
+                                                                >Asignatura</label
+                                                            >
+                                                            <select
+                                                                id="d-asignatura"
+                                                                name="asignatura"
+                                                                class="form-control"
+                                                                required
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                    selected
+                                                                >
+                                                                    Selecciona...
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-4">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-paralelo"
+                                                                >Paralelo</label
+                                                            >
+                                                            <select
+                                                                id="d-paralelo"
+                                                                class="form-control"
+                                                                required
+                                                                disabled
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                    selected
+                                                                >
+                                                                    Selecciona...
+                                                                </option>
+                                                            </select>
+                                                            <input
+                                                                id="d-paralelo-nuevo"
+                                                                class="form-control paralelo-nuevo"
+                                                                type="text"
+                                                                inputmode="numeric"
+                                                                placeholder="Nº del nuevo paralelo (ej: 217)"
+                                                                autocomplete="off"
+                                                            />
+                                                            <div class="help-text">
+                                                                Puedes elegir un
+                                                                paralelo del
+                                                                catálogo o
+                                                                agregar uno
+                                                                nuevo al ramo.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4 col-8">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-emplazamiento"
+                                                                >Emplazamiento</label
+                                                            >
+                                                            <select
+                                                                id="d-emplazamiento"
+                                                                name="emplazamiento"
+                                                                class="form-control"
+                                                                required
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                    selected
+                                                                >
+                                                                    Selecciona...
+                                                                </option>
+                                                                <option
+                                                                    value="Casa Central"
+                                                                >
+                                                                    Casa Central
+                                                                </option>
+                                                                <option
+                                                                    value="San Joaquín"
+                                                                >
+                                                                    San Joaquín
+                                                                </option>
+                                                                <option
+                                                                    value="Campus Vitacura"
+                                                                >
+                                                                    Campus
+                                                                    Vitacura
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-departamento"
+                                                                >Departamento</label
+                                                            >
+                                                            <input
+                                                                id="d-departamento"
+                                                                name="departamento"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Ej: Matemática"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-categoria"
+                                                                >Categoría</label
+                                                            >
+                                                            <input
+                                                                id="d-categoria"
+                                                                name="categoria"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Ej: A"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label for="d-tipo"
+                                                                >Tipo
+                                                                Ayudantía</label
+                                                            >
+                                                            <input
+                                                                id="d-tipo"
+                                                                name="tipo_ayudantia"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                value="Docente"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-inicio"
+                                                                >Inicio</label
+                                                            >
+                                                            <input
+                                                                id="d-inicio"
+                                                                name="inicio"
+                                                                type="date"
+                                                                class="form-control"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="d-termino"
+                                                                >Término</label
+                                                            >
+                                                            <input
+                                                                id="d-termino"
+                                                                name="termino"
+                                                                type="date"
+                                                                class="form-control"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-4">
+                                                        <div class="form-group">
+                                                            <label for="d-horas"
+                                                                >Horas</label
+                                                            >
+                                                            <input
+                                                                id="d-horas"
+                                                                name="horas"
+                                                                type="number"
+                                                                min="1"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="1"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="d-flex align-items-center gap-2"
+                                                    style="gap: 10px"
+                                                >
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-admin"
+                                                    >
+                                                        Crear Ayudantía
+                                                    </button>
+                                                    <div
+                                                        id="msgDocente"
+                                                        class="msg-feedback"
+                                                    ></div>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <!-- Tabla postulaciones -->
+                                        <h6 class="section-subtitle">
+                                            Postulaciones — oferta disponible
+                                        </h6>
+                                        <div class="table-responsive-wrap">
+                                            <table
+                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-docente"
+                                            >
+                                                <colgroup>
+                                                    <col class="col-codigo" />
+                                                    <col
+                                                        class="col-asignatura"
+                                                    />
+                                                    <col class="col-paralelo" />
+                                                    <col class="col-sede" />
+                                                    <col class="col-depto" />
+                                                    <col class="col-inicio" />
+                                                    <col class="col-termino" />
+                                                    <col class="col-horas" />
+                                                    <col class="col-estado" />
+                                                    <col class="col-acciones" />
+                                                </colgroup>
+                                                <thead class="thead-primary">
+                                                    <tr>
+                                                        <th>Código</th>
+                                                        <th>Asignatura</th>
+                                                        <th>Paralelo</th>
+                                                        <th>Sede</th>
+                                                        <th>Departamento</th>
+                                                        <th>Inicio</th>
+                                                        <th>Término</th>
+                                                        <th>Horas</th>
+                                                        <th>Estado</th>
+                                                        <th>Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tablaDocenteBody">
+                                                    <tr class="empty-state">
+                                                        <td colspan="10">
+                                                            Cargando
+                                                            ayudantías...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <!-- /card-body -->
+                                </div>
+                                <!-- /collapse -->
+                            </div>
+                            <!-- /card docente -->
+
+                            <!-- ===== SECCIÓN 2: ADMINISTRATIVAS ===== -->
+                            <div class="card mt-3">
+                                <div
+                                    class="card-header"
+                                    id="headingAdministrativa"
+                                >
+                                    <h2 class="mb-0">
+                                        <button
+                                            class="btn btn-link btn-block text-left accordion-btn collapsed"
+                                            type="button"
+                                            data-toggle="collapse"
+                                            data-target="#collapseAdministrativa"
+                                            aria-expanded="false"
+                                            aria-controls="collapseAdministrativa"
+                                        >
+                                            Ayudantías Administrativas
+                                        </button>
+                                    </h2>
+                                </div>
+
+                                <div
+                                    id="collapseAdministrativa"
+                                    class="collapse"
+                                    aria-labelledby="headingAdministrativa"
+                                >
+                                    <div class="card-body">
+                                        <!-- Formulario crear administrativa -->
+                                        <div class="form-crear">
+                                            <h5>
+                                                Nueva Ayudantía Administrativa
+                                            </h5>
+                                            <form
+                                                id="formAdministrativa"
+                                                novalidate
+                                            >
+                                                <div class="row">
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="a-codigo"
+                                                                >Código</label
+                                                            >
+                                                            <input
+                                                                id="a-codigo"
+                                                                name="codigo"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Ej: ADM-001"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-5 col-6">
+                                                        <div class="form-group">
+                                                            <label for="a-glosa"
+                                                                >Glosa</label
+                                                            >
+                                                            <input
+                                                                id="a-glosa"
+                                                                name="glosa"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Descripción breve"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4 col-8">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="a-emplazamiento"
+                                                                >Emplazamiento</label
+                                                            >
+                                                            <select
+                                                                id="a-emplazamiento"
+                                                                name="emplazamiento"
+                                                                class="form-control"
+                                                                required
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                    selected
+                                                                >
+                                                                    Selecciona...
+                                                                </option>
+                                                                <option
+                                                                    value="Casa Central"
+                                                                >
+                                                                    Casa Central
+                                                                </option>
+                                                                <option
+                                                                    value="San Joaquín"
+                                                                >
+                                                                    San Joaquín
+                                                                </option>
+                                                                <option
+                                                                    value="Campus Vitacura"
+                                                                >
+                                                                    Campus
+                                                                    Vitacura
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="a-departamento"
+                                                                >Departamento</label
+                                                            >
+                                                            <input
+                                                                id="a-departamento"
+                                                                name="departamento"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Ej: Recursos Humanos"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-group">
+                                                            <label for="a-tipo"
+                                                                >Tipo
+                                                                Ayudantía</label
+                                                            >
+                                                            <input
+                                                                id="a-tipo"
+                                                                name="tipo_ayudantia"
+                                                                type="text"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="Ej: Administrativa"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="a-inicio"
+                                                                >Inicio</label
+                                                            >
+                                                            <input
+                                                                id="a-inicio"
+                                                                name="inicio"
+                                                                type="date"
+                                                                class="form-control"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 col-6">
+                                                        <div class="form-group">
+                                                            <label
+                                                                for="a-termino"
+                                                                >Término</label
+                                                            >
+                                                            <input
+                                                                id="a-termino"
+                                                                name="termino"
+                                                                type="date"
+                                                                class="form-control"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-1 col-4">
+                                                        <div class="form-group">
+                                                            <label for="a-horas"
+                                                                >Horas</label
+                                                            >
+                                                            <input
+                                                                id="a-horas"
+                                                                name="horas"
+                                                                type="number"
+                                                                min="1"
+                                                                class="form-control"
+                                                                required
+                                                                placeholder="1"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="d-flex align-items-center"
+                                                    style="gap: 10px"
+                                                >
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-admin"
+                                                    >
+                                                        Crear Ayudantía
+                                                    </button>
+                                                    <div
+                                                        id="msgAdministrativa"
+                                                        class="msg-feedback"
+                                                    ></div>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <!-- Tabla administrativas -->
+                                        <div class="table-responsive-wrap">
+                                            <table
+                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-adm"
+                                            >
+                                                <colgroup>
+                                                    <col
+                                                        class="col-adm-codigo"
+                                                    />
+                                                    <col
+                                                        class="col-adm-glosa"
+                                                    />
+                                                    <col class="col-adm-sede" />
+                                                    <col
+                                                        class="col-adm-depto"
+                                                    />
+                                                    <col class="col-adm-tipo" />
+                                                    <col
+                                                        class="col-adm-inicio"
+                                                    />
+                                                    <col
+                                                        class="col-adm-termino"
+                                                    />
+                                                    <col
+                                                        class="col-adm-horas"
+                                                    />
+                                                    <col
+                                                        class="col-adm-estado"
+                                                    />
+                                                    <col
+                                                        class="col-adm-acciones"
+                                                    />
+                                                </colgroup>
+                                                <thead class="thead-primary">
+                                                    <tr>
+                                                        <th>Código</th>
+                                                        <th>Glosa</th>
+                                                        <th>Sede</th>
+                                                        <th>Departamento</th>
+                                                        <th>Tipo</th>
+                                                        <th>Inicio</th>
+                                                        <th>Término</th>
+                                                        <th>Horas</th>
+                                                        <th>Estado</th>
+                                                        <th>Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody
+                                                    id="tablaAdministrativaBody"
+                                                >
+                                                    <tr class="empty-state">
+                                                        <td colspan="10">
+                                                            Cargando
+                                                            ayudantías...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <!-- /card-body -->
+                                </div>
+                                <!-- /collapse -->
+                            </div>
+                            <!-- /card administrativa -->
+                        </div>
+                        <!-- /accordion -->
+                    </div>
+                    <!-- /col -->
+                </div>
+                <!-- /row -->
+            </div>
+            <!-- /container -->
+        </section>
+
+        <script src="/utils.js"></script>
+        <script>
+            // ── Utilidades ────────────────────────────────────────────────────────────
+
+            function formatDate(value) {
+                if (!value) return "-";
+                // Accepts ISO date strings (YYYY-MM-DD) or full timestamps
+                const parts = String(value).split("T")[0].split("-");
+                if (parts.length === 3)
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                const d = new Date(value);
+                return Number.isNaN(d.getTime())
+                    ? escapeHtml(value)
+                    : d.toLocaleDateString("es-CL");
+            }
+
+            function renderEmptyRow(msg, cols) {
+                return `<tr class="empty-state"><td colspan="${cols}">${escapeHtml(msg)}</td></tr>`;
+            }
+
+            function showMsg(el, type, text) {
+                el.className = `msg-feedback ${type}`;
+                el.textContent = text;
+                if (type === "error") return;
+                setTimeout(() => {
+                    el.className = "msg-feedback";
+                    el.textContent = "";
+                }, 4000);
+            }
+
+            async function parseJsonResponse(res) {
+                const contentType = res.headers.get("content-type") || "";
+                const raw = await res.text();
+                const trimmed = raw.trimStart();
+                const looksLikeJson =
+                    trimmed.startsWith("{") || trimmed.startsWith("[");
+
+                if (!contentType.includes("application/json") && !looksLikeJson) {
+                    if (
+                        trimmed.startsWith("<!DOCTYPE") ||
+                        trimmed.startsWith("<html")
+                    ) {
+                        throw new Error(
+                            "El servidor devolvió HTML en lugar de JSON. Abre el panel en http://localhost:3000/admin con la app en ejecución.",
+                        );
+                    }
+                    throw new Error(
+                        raw.slice(0, 120) || "Respuesta no válida del servidor",
+                    );
+                }
+                try {
+                    return JSON.parse(raw);
+                } catch {
+                    throw new Error("Respuesta JSON inválida del servidor");
+                }
+            }
+
+            function renderEstadoBadge(estado) {
+                const value = estado ?? "-";
+                if (value === "Disponible") {
+                    return `<span class="badge-estado disponible">${escapeHtml(value)}</span>`;
+                }
+                return `<span class="badge-estado otro">${escapeHtml(value)}</span>`;
+            }
+
+            // ── Referencias DOM ───────────────────────────────────────────────────────
+
+            const tablaDocenteBody =
+                document.getElementById("tablaDocenteBody");
+            const tablaAdministrativaBody = document.getElementById(
+                "tablaAdministrativaBody",
+            );
+            const formDocente = document.getElementById("formDocente");
+            const formAdministrativa =
+                document.getElementById("formAdministrativa");
+            const msgDocente = document.getElementById("msgDocente");
+            const msgAdministrativa =
+                document.getElementById("msgAdministrativa");
+            const selectAsignatura = document.getElementById("d-asignatura");
+            const selectParalelo = document.getElementById("d-paralelo");
+            const inputParaleloNuevo =
+                document.getElementById("d-paralelo-nuevo");
+            const inputCodigo = document.getElementById("d-codigo");
+            const inputEmplazamiento =
+                document.getElementById("d-emplazamiento");
+            const inputHoras = document.getElementById("d-horas");
+
+            let catalogoAsignaturas = [];
+            let ayudantiasDocenteActivas = [];
+
+            function poblarSelectAsignaturas(catalogo) {
+                const asignaturas = [
+                    ...new Set(catalogo.map((item) => item.asignatura)),
+                ].sort((a, b) => a.localeCompare(b, "es"));
+                selectAsignatura.innerHTML =
+                    '<option value="" disabled selected>Selecciona...</option>';
+                for (const asignatura of asignaturas) {
+                    const option = document.createElement("option");
+                    option.value = asignatura;
+                    option.textContent = asignatura;
+                    selectAsignatura.appendChild(option);
+                }
+            }
+
+            function extractParalelo(value) {
+                const match = String(value ?? "").match(/\d+/);
+                return match ? match[0] : "";
+            }
+
+            function asignaturaExisteEnCatalogo(asignatura) {
+                return catalogoAsignaturas.some(
+                    (item) => item.asignatura === asignatura,
+                );
+            }
+
+            function obtenerReferenciaAsignatura(asignatura) {
+                return catalogoAsignaturas.find(
+                    (item) => item.asignatura === asignatura,
+                );
+            }
+
+            function esParaleloNuevo() {
+                return selectParalelo.value === "__nuevo__";
+            }
+
+            function getParaleloSeleccionado() {
+                if (esParaleloNuevo()) {
+                    return extractParalelo(inputParaleloNuevo.value);
+                }
+                return extractParalelo(selectParalelo.value);
+            }
+
+            function toggleParaleloNuevo() {
+                const esNuevo = esParaleloNuevo();
+                inputParaleloNuevo.classList.toggle("visible", esNuevo);
+                inputParaleloNuevo.required = esNuevo;
+                if (!esNuevo) inputParaleloNuevo.value = "";
+                actualizarCamposDesdeSeleccion();
+            }
+
+            function poblarSelectParalelos(asignatura) {
+                selectParalelo.innerHTML =
+                    '<option value="" disabled selected>Selecciona...</option>';
+                inputParaleloNuevo.value = "";
+                inputParaleloNuevo.classList.remove("visible");
+                inputParaleloNuevo.required = false;
+
+                if (!asignatura) {
+                    selectParalelo.disabled = true;
+                    return;
+                }
+
+                const paralelosMap = new Map();
+
+                for (const item of catalogoAsignaturas.filter(
+                    (entry) => entry.asignatura === asignatura,
+                )) {
+                    paralelosMap.set(String(item.paralelo), item);
+                }
+
+                for (const item of ayudantiasDocenteActivas.filter(
+                    (entry) => entry.asignatura === asignatura && entry.paralelo,
+                )) {
+                    const key = String(item.paralelo);
+                    if (!paralelosMap.has(key)) {
+                        paralelosMap.set(key, {
+                            paralelo: key,
+                            emplazamiento: item.emplazamiento,
+                            horas: item.horas,
+                        });
+                    }
+                }
+
+                const opciones = [...paralelosMap.values()].sort(
+                    (a, b) => Number(a.paralelo) - Number(b.paralelo),
+                );
+
+                for (const item of opciones) {
+                    const option = document.createElement("option");
+                    option.value = item.paralelo;
+                    option.textContent = `Paralelo ${item.paralelo}`;
+                    option.dataset.emplazamiento = item.emplazamiento ?? "";
+                    option.dataset.horas = String(item.horas ?? "");
+                    selectParalelo.appendChild(option);
+                }
+
+                const optionNuevo = document.createElement("option");
+                optionNuevo.value = "__nuevo__";
+                optionNuevo.textContent = "+ Nuevo paralelo...";
+                selectParalelo.appendChild(optionNuevo);
+                selectParalelo.disabled = false;
+            }
+
+            function obtenerEntradaCatalogo(asignatura, paralelo) {
+                return catalogoAsignaturas.find(
+                    (item) =>
+                        item.asignatura === asignatura &&
+                        item.paralelo === paralelo,
+                );
+            }
+
+            function existeAyudantiaActiva(asignatura, paralelo) {
+                return ayudantiasDocenteActivas.some(
+                    (item) =>
+                        item.asignatura === asignatura &&
+                        item.paralelo === paralelo &&
+                        item.estado === "Disponible",
+                );
+            }
+
+            function actualizarCamposDesdeSeleccion() {
+                const asignatura = selectAsignatura.value;
+                const paralelo = getParaleloSeleccionado();
+                if (!asignatura || !paralelo) {
+                    if (!asignatura) inputCodigo.value = "";
+                    return;
+                }
+
+                const entrada =
+                    obtenerEntradaCatalogo(asignatura, paralelo) ||
+                    obtenerReferenciaAsignatura(asignatura);
+
+                if (entrada) {
+                    if (entrada.emplazamiento) {
+                        inputEmplazamiento.value = entrada.emplazamiento;
+                    }
+                    if (
+                        entrada.horas &&
+                        (!inputHoras.value || esParaleloNuevo())
+                    ) {
+                        inputHoras.value = entrada.horas;
+                    }
+                }
+
+                inputCodigo.value = `${asignatura}-${paralelo}`.slice(0, 30);
+            }
+
+            async function cargarCatalogoAsignaturas() {
+                try {
+                    const res = await fetch("/catalogo-asignaturas.json", {
+                        credentials: "same-origin",
+                    });
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok) {
+                        throw new Error(
+                            data.error ||
+                                "No se pudo cargar el catálogo de asignaturas",
+                        );
+                    }
+                    catalogoAsignaturas = Array.isArray(data) ? data : [];
+                    poblarSelectAsignaturas(catalogoAsignaturas);
+                } catch (err) {
+                    showMsg(
+                        msgDocente,
+                        "error",
+                        err.message ||
+                            "Error al cargar asignaturas disponibles.",
+                    );
+                    console.error("cargarCatalogoAsignaturas:", err);
+                }
+            }
+
+            selectAsignatura.addEventListener("change", () => {
+                poblarSelectParalelos(selectAsignatura.value);
+                inputCodigo.value = "";
+            });
+
+            selectParalelo.addEventListener("change", () => {
+                toggleParaleloNuevo();
+            });
+
+            inputParaleloNuevo.addEventListener("input", () => {
+                actualizarCamposDesdeSeleccion();
+            });
+
+            // ── Render tablas ─────────────────────────────────────────────────────────
+
+            function renderDocentes(rows) {
+                ayudantiasDocenteActivas = Array.isArray(rows) ? rows : [];
+                if (!rows || rows.length === 0) {
+                    tablaDocenteBody.innerHTML = renderEmptyRow(
+                        "No hay ayudantías docentes registradas",
+                        10,
+                    );
+                    return;
+                }
+                tablaDocenteBody.innerHTML = rows
+                    .map(
+                        (item) => `
+          <tr>
+            <td>${escapeHtml(item.codigo)}</td>
+            <td>${escapeHtml(item.asignatura)}</td>
+            <td>${escapeHtml(item.paralelo)}</td>
+            <td>${escapeHtml(item.emplazamiento)}</td>
+            <td>${escapeHtml(item.departamento)}</td>
+            <td>${formatDate(item.inicio)}</td>
+            <td>${formatDate(item.termino)}</td>
+            <td>${escapeHtml(item.horas)}</td>
+            <td>${renderEstadoBadge(item.estado)}</td>
+            <td>
+              <button class="btn-eliminar"
+                onclick="eliminarDocente(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        `,
+                    )
+                    .join("");
+            }
+
+            function renderAdministrativas(rows) {
+                if (!rows || rows.length === 0) {
+                    tablaAdministrativaBody.innerHTML = renderEmptyRow(
+                        "No hay ayudantías administrativas registradas",
+                        10,
+                    );
+                    return;
+                }
+                tablaAdministrativaBody.innerHTML = rows
+                    .map(
+                        (item) => `
+          <tr>
+            <td>${escapeHtml(item.codigo)}</td>
+            <td>${escapeHtml(item.glosa)}</td>
+            <td>${escapeHtml(item.emplazamiento)}</td>
+            <td>${escapeHtml(item.departamento)}</td>
+            <td>${escapeHtml(item.tipo_ayudantia)}</td>
+            <td>${formatDate(item.inicio)}</td>
+            <td>${formatDate(item.termino)}</td>
+            <td>${escapeHtml(item.horas)}</td>
+            <td>${renderEstadoBadge(item.estado)}</td>
+            <td>
+              <button class="btn-eliminar"
+                onclick="eliminarAdministrativa(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        `,
+                    )
+                    .join("");
+            }
+
+            // ── Carga inicial ─────────────────────────────────────────────────────────
+
+            async function cargarDocentes() {
+                tablaDocenteBody.innerHTML = renderEmptyRow("Cargando...", 10);
+                try {
+                    const res = await fetch("/api/admin/ayudantias/docente", {
+                        credentials: "same-origin",
+                    });
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok)
+                        throw new Error(
+                            data.error || "Error al cargar ayudantías docentes",
+                        );
+                    renderDocentes(
+                        Array.isArray(data)
+                            ? data
+                            : (data.docente ?? data.ayudantias ?? []),
+                    );
+                } catch (err) {
+                    tablaDocenteBody.innerHTML = renderEmptyRow(
+                        err.message,
+                        10,
+                    );
+                    console.error("cargarDocentes:", err);
+                }
+            }
+
+            async function cargarAdministrativas() {
+                tablaAdministrativaBody.innerHTML = renderEmptyRow(
+                    "Cargando...",
+                    10,
+                );
+                try {
+                    const res = await fetch(
+                        "/api/admin/ayudantias/administrativa",
+                        { credentials: "same-origin" },
+                    );
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok)
+                        throw new Error(
+                            data.error ||
+                                "Error al cargar ayudantías administrativas",
+                        );
+                    renderAdministrativas(
+                        Array.isArray(data)
+                            ? data
+                            : (data.administrativa ?? data.ayudantias ?? []),
+                    );
+                } catch (err) {
+                    tablaAdministrativaBody.innerHTML = renderEmptyRow(
+                        err.message,
+                        10,
+                    );
+                    console.error("cargarAdministrativas:", err);
+                }
+            }
+
+            // ── Crear ─────────────────────────────────────────────────────────────────
+
+            formDocente.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (!formDocente.checkValidity()) {
+                    formDocente.reportValidity();
+                    return;
+                }
+
+                const asignatura = selectAsignatura.value;
+                const paralelo = getParaleloSeleccionado();
+
+                if (!asignatura || !asignaturaExisteEnCatalogo(asignatura)) {
+                    showMsg(
+                        msgDocente,
+                        "error",
+                        "Debe seleccionar una asignatura existente del catálogo.",
+                    );
+                    return;
+                }
+
+                if (!paralelo) {
+                    showMsg(
+                        msgDocente,
+                        "error",
+                        esParaleloNuevo()
+                            ? "Ingrese el número del nuevo paralelo."
+                            : "Debe seleccionar o ingresar un paralelo.",
+                    );
+                    return;
+                }
+
+                if (existeAyudantiaActiva(asignatura, paralelo)) {
+                    showMsg(
+                        msgDocente,
+                        "error",
+                        `Ya existe una ayudantía activa para la asignatura "${asignatura}" con el paralelo "${paralelo}".`,
+                    );
+                    return;
+                }
+
+                const fd = new FormData(formDocente);
+                const body = Object.fromEntries(fd.entries());
+                body.asignatura = asignatura;
+                body.paralelo = paralelo;
+                body.horas = Number(body.horas);
+                actualizarCamposDesdeSeleccion();
+                body.codigo = inputCodigo.value.trim();
+
+                try {
+                    const res = await fetch("/api/admin/ayudantias/docente", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify(body),
+                    });
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok)
+                        throw new Error(
+                            data.error || "No se pudo crear la ayudantía",
+                        );
+                    showMsg(
+                        msgDocente,
+                        "success",
+                        "Ayudantía creada correctamente con estado Disponible.",
+                    );
+                    formDocente.reset();
+                    document.getElementById("d-tipo").value = "Docente";
+                    inputParaleloNuevo.value = "";
+                    inputParaleloNuevo.classList.remove("visible");
+                    inputParaleloNuevo.required = false;
+                    selectParalelo.disabled = true;
+                    selectParalelo.innerHTML =
+                        '<option value="" disabled selected>Selecciona...</option>';
+                    poblarSelectAsignaturas(catalogoAsignaturas);
+                    await cargarDocentes();
+                } catch (err) {
+                    showMsg(msgDocente, "error", err.message);
+                    console.error("crearDocente:", err);
+                }
+            });
+
+            formAdministrativa.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (!formAdministrativa.checkValidity()) {
+                    formAdministrativa.reportValidity();
+                    return;
+                }
+                const fd = new FormData(formAdministrativa);
+                const body = Object.fromEntries(fd.entries());
+                body.horas = Number(body.horas);
+
+                try {
+                    const res = await fetch(
+                        "/api/admin/ayudantias/administrativa",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "same-origin",
+                            body: JSON.stringify(body),
+                        },
+                    );
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok)
+                        throw new Error(
+                            data.error || "No se pudo crear la ayudantía",
+                        );
+                    showMsg(
+                        msgAdministrativa,
+                        "success",
+                        "Ayudantía creada correctamente.",
+                    );
+                    formAdministrativa.reset();
+                    await cargarAdministrativas();
+                } catch (err) {
+                    showMsg(msgAdministrativa, "error", err.message);
+                    console.error("crearAdministrativa:", err);
+                }
+            });
+
+            // ── Eliminar ──────────────────────────────────────────────────────────────
+
+            async function eliminarDocente(id, codigo) {
+                if (
+                    !confirm(
+                        `¿Eliminar la ayudantía docente "${codigo}"? Esta acción no se puede deshacer.`,
+                    )
+                )
+                    return;
+                try {
+                    const res = await fetch(
+                        `/api/admin/ayudantias/docente/${id}`,
+                        {
+                            method: "DELETE",
+                            credentials: "same-origin",
+                        },
+                    );
+                    if (!res.ok) {
+                        const data = await parseJsonResponse(res);
+                        throw new Error(
+                            data.error || "No se pudo eliminar la ayudantía",
+                        );
+                    }
+                    await cargarDocentes();
+                } catch (err) {
+                    alert(`Error: ${err.message}`);
+                    console.error("eliminarDocente:", err);
+                }
+            }
+
+            async function eliminarAdministrativa(id, codigo) {
+                if (
+                    !confirm(
+                        `¿Eliminar la ayudantía administrativa "${codigo}"? Esta acción no se puede deshacer.`,
+                    )
+                )
+                    return;
+                try {
+                    const res = await fetch(
+                        `/api/admin/ayudantias/administrativa/${id}`,
+                        {
+                            method: "DELETE",
+                            credentials: "same-origin",
+                        },
+                    );
+                    if (!res.ok) {
+                        const data = await parseJsonResponse(res);
+                        throw new Error(
+                            data.error || "No se pudo eliminar la ayudantía",
+                        );
+                    }
+                    await cargarAdministrativas();
+                } catch (err) {
+                    alert(`Error: ${err.message}`);
+                    console.error("eliminarAdministrativa:", err);
+                }
+            }
+
+            // ── Arranque ──────────────────────────────────────────────────────────────
+
+            cargarCatalogoAsignaturas();
+            cargarDocentes();
+            cargarAdministrativas();
+        </script>
+
+        <script src="/template_tabla/js/jquery.min.js"></script>
+        <script src="/template_tabla/js/popper.js"></script>
+        <script src="/template_tabla/js/bootstrap.min.js"></script>
+        <script src="/template_tabla/js/main.js"></script>
+    </body>
+</html>
