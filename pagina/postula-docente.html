@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+        <title>Postula Docente</title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background: #f4f6f8;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .wrap {
+                width: min(760px, 94vw);
+                margin: 28px auto;
+            }
+            .card {
+                border: 1px solid #d8e0e6;
+                border-radius: 12px;
+                background: #fff;
+                padding: 20px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            }
+            h1 {
+                margin: 0 0 8px;
+            }
+            p {
+                margin: 0 0 14px;
+                color: #4b5563;
+            }
+            .field {
+                margin-bottom: 10px;
+            }
+            .field-grid {
+                display: grid;
+                grid-template-columns: 1.6fr 1fr;
+                gap: 10px;
+            }
+            .help-text {
+                margin-top: 4px;
+                font-size: 0.85rem;
+                color: #6b7280;
+            }
+            label {
+                display: block;
+                margin-bottom: 4px;
+                font-size: 0.92rem;
+            }
+            input,
+            select,
+            textarea,
+            button {
+                width: 100%;
+                border: 1px solid #d5dde3;
+                border-radius: 8px;
+                padding: 9px 10px;
+                font-size: 0.95rem;
+                box-sizing: border-box;
+            }
+            textarea {
+                min-height: 110px;
+                resize: vertical;
+            }
+            button {
+                margin-top: 8px;
+                border: none;
+                background: #2e8322;
+                color: #fff;
+                font-weight: 700;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #25681b;
+            }
+            .status {
+                margin-top: 10px;
+                min-height: 20px;
+                color: #7f1d1d;
+            }
+            .ok {
+                color: #166534;
+            }
+            .back {
+                display: inline-block;
+                margin-top: 14px;
+                color: #25681b;
+                font-weight: 700;
+                text-decoration: none;
+            }
+            .hidden-field {
+                display: none;
+            }
+
+            .file-input-wrapper {
+                border: 2px dashed #b0bec5;
+                border-radius: 8px;
+                padding: 12px;
+                cursor: pointer;
+                transition: border-color 0.2s;
+            }
+            .file-input-wrapper:hover {
+                border-color: #2e8322;
+            }
+            .file-input-wrapper input[type="file"] {
+                border: none;
+                padding: 0;
+                background: none;
+                cursor: pointer;
+            }
+            .file-list {
+                list-style: none;
+                margin: 8px 0 0;
+                padding: 0;
+                font-size: 0.85rem;
+            }
+            .file-list li {
+                padding: 3px 0;
+            }
+            .file-item-error {
+                color: #b91c1c;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="wrap">
+            <section class="card">
+                <h1>Postulación Ayudantía Docente</h1>
+                <p>
+                    Completa todos los campos obligatorios para registrar tu
+                    solicitud.
+                </p>
+                <form id="postulaDocenteForm">
+                    <input
+                        id="nombreEstudiante"
+                        name="nombreEstudiante"
+                        type="hidden"
+                        class="hidden-field"
+                        required
+                    />
+                    <input
+                        id="emailEstudiante"
+                        name="emailEstudiante"
+                        type="hidden"
+                        class="hidden-field"
+                        required
+                    />
+
+                    <div class="field-grid">
+                        <div class="field">
+                            <label for="buscadorAyudantia"
+                                >Buscar ayudantía</label
+                            >
+                            <input
+                                id="buscadorAyudantia"
+                                name="buscadorAyudantia"
+                                type="search"
+                                placeholder="Busca por nombre o sigla"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="field">
+                            <label for="filtroSede">Sede</label>
+                            <select id="filtroSede" name="filtroSede">
+                                <option value="all">Todas las sedes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="help-text" id="helpSedes">
+                        Las sedes disponibles se cargan según las ayudantías
+                        activas.
+                    </div>
+
+                    <div class="field">
+                        <label for="ayudantiaId"
+                            >Ayudantía docente disponible</label
+                        >
+                        <select
+                            id="ayudantiaId"
+                            name="ayudantiaId"
+                            required
+                        ></select>
+                    </div>
+
+                    <div class="field">
+                        <label for="motivacion">Motivación</label>
+                        <textarea
+                            id="motivacion"
+                            name="motivacion"
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="archivos"
+                            >Archivo adjunto (máx. 15 MB)</label
+                        >
+                        <div class="file-input-wrapper">
+                            <input type="file" id="archivos" name="archivos" />
+                        </div>
+                        <ul id="listaArchivos" class="file-list"></ul>
+                    </div>
+
+                    <button type="submit">Enviar postulación</button>
+                    <div id="status" class="status"></div>
+                </form>
+                <a class="back" href="/estudiante">Volver</a>
+            </section>
+        </main>
+
+        <script src="/utils.js"></script>
+        <script>
+            const form = document.getElementById("postulaDocenteForm");
+            const buscadorAyudantia =
+                document.getElementById("buscadorAyudantia");
+            const filtroSede = document.getElementById("filtroSede");
+            const selectAyudantia = document.getElementById("ayudantiaId");
+            const nombreEstudiante =
+                document.getElementById("nombreEstudiante");
+            const emailEstudiante = document.getElementById("emailEstudiante");
+            const archivosInput = document.getElementById("archivos");
+            const listaArchivos = document.getElementById("listaArchivos");
+            const statusEl = document.getElementById("status");
+            let ayudantiasDisponibles = [];
+
+            const MAX_FILE_MB = 15;
+            const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+
+            function cargarUsuarioActual() {
+                const currentUser = getCurrentUser();
+                if (!currentUser) {
+                    statusEl.textContent =
+                        "No se pudo identificar al postulante. Vuelve a iniciar sesión.";
+                    return false;
+                }
+                nombreEstudiante.value = currentUser.nombre || "";
+                emailEstudiante.value = currentUser.email || "";
+                return Boolean(nombreEstudiante.value && emailEstudiante.value);
+            }
+
+            function normalizeText(value) {
+                return String(value ?? "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase()
+                    .trim();
+            }
+
+            function normalizeSede(value) {
+                return normalizeText(value).replace(/\s+/g, " ");
+            }
+
+            function getSedeValue(item) {
+                return String(item?.emplazamiento ?? "").trim();
+            }
+
+            function sedeCoincide(itemSede, filtroSede) {
+                if (filtroSede === "all") return true;
+                return normalizeSede(itemSede) === normalizeSede(filtroSede);
+            }
+
+            function poblarFiltroSedes() {
+                const sedesUnicas = [
+                    ...new Set(
+                        ayudantiasDisponibles
+                            .map(getSedeValue)
+                            .filter(Boolean),
+                    ),
+                ].sort((a, b) => a.localeCompare(b, "es"));
+                const prev = filtroSede.value;
+
+                filtroSede.innerHTML =
+                    '<option value="all">Todas las sedes</option>';
+                for (const sede of sedesUnicas) {
+                    const option = document.createElement("option");
+                    option.value = sede;
+                    option.textContent = sede;
+                    filtroSede.appendChild(option);
+                }
+
+                if (prev !== "all" && sedesUnicas.includes(prev)) {
+                    filtroSede.value = prev;
+                    return;
+                }
+
+                const sanJoaquin = sedesUnicas.find(
+                    (sede) => normalizeSede(sede) === "san joaquin",
+                );
+                filtroSede.value = sanJoaquin || "all";
+            }
+
+            function renderAyudantias() {
+                const query = normalizeText(buscadorAyudantia.value);
+                const sedeSeleccionada = filtroSede.value;
+                const filtradas = ayudantiasDisponibles.filter((item) => {
+                    const coincideSede = sedeCoincide(
+                        getSedeValue(item),
+                        sedeSeleccionada,
+                    );
+                    const texto = normalizeText(
+                        `${item.asignatura} ${item.codigo} ${item.emplazamiento} ${item.departamento} ${item.paralelo}`,
+                    );
+                    return coincideSede && (!query || texto.includes(query));
+                });
+                if (filtradas.length === 0) {
+                    selectAyudantia.innerHTML =
+                        '<option value="">No hay ayudantías para ese filtro</option>';
+                    selectAyudantia.disabled = true;
+                    return;
+                }
+                selectAyudantia.disabled = false;
+                selectAyudantia.innerHTML = filtradas
+                    .map(
+                        (item) =>
+                            `<option value="${item.id}">${item.asignatura} | Paralelo ${item.paralelo} | ${item.emplazamiento} | ${item.horas} hrs</option>`,
+                    )
+                    .join("");
+            }
+
+            async function parseJsonResponse(response) {
+                const contentType = response.headers.get("content-type") || "";
+                const raw = await response.text();
+                const trimmed = raw.trimStart();
+                const looksLikeJson =
+                    trimmed.startsWith("{") || trimmed.startsWith("[");
+                if (
+                    !contentType.includes("application/json") &&
+                    !looksLikeJson
+                ) {
+                    throw new Error(
+                        "No se pudo cargar las ayudantías. Verifica que la app esté corriendo en http://localhost:3000",
+                    );
+                }
+                return JSON.parse(raw);
+            }
+
+            async function cargarAyudantias() {
+                selectAyudantia.disabled = true;
+                selectAyudantia.innerHTML =
+                    '<option value="">Cargando ayudantías...</option>';
+                try {
+                    const response = await fetch("/api/ayudantias/docente");
+                    const data = await parseJsonResponse(response);
+                    if (!response.ok) {
+                        throw new Error(
+                            data.error || "No se pudieron cargar las ayudantías",
+                        );
+                    }
+                    ayudantiasDisponibles = Array.isArray(data) ? data : [];
+                    poblarFiltroSedes();
+                    renderAyudantias();
+                    if (ayudantiasDisponibles.length === 0) {
+                        selectAyudantia.innerHTML =
+                            '<option value="">No hay ayudantías disponibles</option>';
+                    }
+                } catch (err) {
+                    selectAyudantia.innerHTML =
+                        '<option value="">Error al cargar ayudantías</option>';
+                    statusEl.textContent = err.message;
+                    console.error("cargarAyudantias:", err);
+                }
+            }
+
+            function actualizarListaArchivos() {
+                const file = archivosInput.files[0];
+                if (!file) {
+                    listaArchivos.innerHTML = "";
+                    return;
+                }
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                const excede = file.size > MAX_FILE_BYTES;
+                listaArchivos.innerHTML = `<li${excede ? ' class="file-item-error"' : ""}>${file.name} (${sizeMB} MB)${excede ? " — supera el límite de 15 MB" : ""}</li>`;
+            }
+
+            archivosInput.addEventListener("change", actualizarListaArchivos);
+
+            buscadorAyudantia.addEventListener("input", renderAyudantias);
+            filtroSede.addEventListener("change", renderAyudantias);
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                statusEl.textContent = "";
+                statusEl.classList.remove("ok");
+
+                if (!cargarUsuarioActual()) return;
+
+                const file = archivosInput.files[0];
+                if (file && file.size > MAX_FILE_BYTES) {
+                    statusEl.textContent =
+                        "El archivo supera el límite de 15 MB.";
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("ayudantiaId", selectAyudantia.value);
+                formData.append("nombreEstudiante", nombreEstudiante.value);
+                formData.append("emailEstudiante", emailEstudiante.value);
+                formData.append(
+                    "motivacion",
+                    document.getElementById("motivacion").value,
+                );
+                if (file) formData.append("archivos", file);
+
+                const response = await fetch("/api/postulaciones/docente", {
+                    method: "POST",
+                    body: formData,
+                });
+                const data = await parseJsonResponse(response);
+                if (!response.ok) {
+                    statusEl.textContent =
+                        data.error || "No se pudo registrar la postulación";
+                    return;
+                }
+                statusEl.textContent = data.message;
+                statusEl.classList.add("ok");
+                form.reset();
+                listaArchivos.innerHTML = "";
+                cargarUsuarioActual();
+                await cargarAyudantias();
+            });
+
+            cargarUsuarioActual();
+            cargarAyudantias();
+        </script>
+    </body>
+</html>
