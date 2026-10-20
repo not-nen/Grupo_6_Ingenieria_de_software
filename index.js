@@ -11,16 +11,8 @@ const multer = require("multer");
 const uploadsDir = path.join(__dirname, "pagina", "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    cb(null, `${unique}-${file.originalname}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
 });
 
@@ -30,14 +22,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 async function initDb() {
+  await pool.query(`DROP TABLE IF EXISTS registro_horas`);
+
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS ayudante (
+    DO $$
+    BEGIN
+      IF to_regclass('public.ayudante') IS NOT NULL
+         AND to_regclass('public.estudiante') IS NULL THEN
+        ALTER TABLE ayudante RENAME TO estudiante;
+      END IF;
+    END $$;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS estudiante (
       id SERIAL PRIMARY KEY,
       nombre VARCHAR(120) NOT NULL,
       email VARCHAR(160) UNIQUE NOT NULL,
       password VARCHAR(160) NOT NULL,
+      archivos JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE estudiante
+    ADD COLUMN IF NOT EXISTS archivos JSONB NOT NULL DEFAULT '[]'::jsonb
   `);
 
   await pool.query(`
@@ -93,7 +103,7 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS postulaciones_docente (
       id SERIAL PRIMARY KEY,
       ayudantia_docente_id INTEGER NOT NULL REFERENCES ayudantias_docente(id) ON DELETE CASCADE,
-      ayudante_id INTEGER REFERENCES ayudante(id) ON DELETE SET NULL,
+      ayudante_id INTEGER REFERENCES estudiante(id) ON DELETE SET NULL,
       nombre_estudiante VARCHAR(120) NOT NULL,
       email_estudiante VARCHAR(160) NOT NULL,
       motivacion TEXT NOT NULL,
@@ -109,7 +119,7 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS postulaciones_administrativas (
       id SERIAL PRIMARY KEY,
       ayudantia_administrativa_id INTEGER NOT NULL REFERENCES ayudantias_administrativas(id) ON DELETE CASCADE,
-      ayudante_id INTEGER REFERENCES ayudante(id) ON DELETE SET NULL,
+      ayudante_id INTEGER REFERENCES estudiante(id) ON DELETE SET NULL,
       nombre_estudiante VARCHAR(120) NOT NULL,
       email_estudiante VARCHAR(160) NOT NULL,
       motivacion TEXT NOT NULL,
@@ -124,23 +134,11 @@ async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS notificaciones_estudiante (
       id SERIAL PRIMARY KEY,
-      ayudante_id INTEGER REFERENCES ayudante(id) ON DELETE SET NULL,
+      ayudante_id INTEGER REFERENCES estudiante(id) ON DELETE SET NULL,
       nombre_estudiante VARCHAR(120) NOT NULL,
       email_estudiante VARCHAR(160) NOT NULL,
       mensaje TEXT NOT NULL,
       leida BOOLEAN DEFAULT false,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS registro_horas (
-      id SERIAL PRIMARY KEY,
-      ayudante_id INTEGER REFERENCES ayudante(id) ON DELETE SET NULL,
-      nombre_ayudante VARCHAR(120) NOT NULL,
-      email_ayudante VARCHAR(160) NOT NULL,
-      semana_inicio DATE NOT NULL,
-      horas NUMERIC(6,2) NOT NULL CHECK (horas >= 0),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -153,12 +151,6 @@ async function initDb() {
       password VARCHAR(160) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
-  `);
-
-  // Añadir columna ayudantia_descripcion si no existe (migración no destructiva)
-  await pool.query(`
-    ALTER TABLE registro_horas
-    ADD COLUMN IF NOT EXISTS ayudantia_descripcion VARCHAR(200)
   `);
 
   // Nota: se removieron los inserts "semilla" de ayudantías.
@@ -325,7 +317,7 @@ async function seedAdministrativaFromFormatoIfEmpty() {
 
 function getRoleConfig(role) {
   if (role === "estudiante") {
-    return { table: "ayudante", redirect: "/estudiante" };
+    return { table: "estudiante", redirect: "/estudiante" };
   }
   if (role === "profesor") {
     return { table: "profesor", redirect: "/profesor" };
@@ -368,6 +360,23 @@ function getCurrentUserFromRequest(req) {
   }
 }
 
+async function agregarArchivoEstudiante(estudianteId, file) {
+  const entrada = {
+    nombre: file.originalname,
+    mime: file.mimetype || "application/octet-stream",
+    tamano: file.size,
+    contenido: file.buffer.toString("base64"),
+    subido_en: new Date().toISOString(),
+  };
+
+  await pool.query(
+    `UPDATE estudiante
+     SET archivos = COALESCE(archivos, '[]'::jsonb) || $2::jsonb
+     WHERE id = $1`,
+    [estudianteId, JSON.stringify([entrada])],
+  );
+}
+
 // Ruta principal: login
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "pagina", "login.html"));
@@ -387,10 +396,6 @@ app.get("/estudiante", (req, res) => {
 
 app.get("/profesor", (req, res) => {
   res.sendFile(path.join(__dirname, "pagina", "profesor.html"));
-});
-
-app.get("/registro-horas", (req, res) => {
-  res.sendFile(path.join(__dirname, "pagina", "registro-horas.html"));
 });
 
 app.post("/api/register", async (req, res) => {
@@ -604,7 +609,9 @@ app.post(
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const documentos = req.file ? req.file.filename : "Sin archivos adjuntos";
+      const documentos = req.file
+        ? req.file.originalname
+        : "Sin archivos adjuntos";
 
       const ayudantia = await pool.query(
         "SELECT id FROM ayudantias_docente WHERE id = $1",
@@ -614,12 +621,22 @@ app.post(
         return res.status(404).json({ error: "Ayudantía no encontrada" });
       }
 
-      const ayudanteResult = await pool.query(
-        "SELECT id FROM ayudante WHERE email = $1",
+      const estudianteResult = await pool.query(
+        "SELECT id FROM estudiante WHERE email = $1",
         [String(emailEstudiante).trim().toLowerCase()],
       );
-      const ayudanteId =
-        ayudanteResult.rowCount > 0 ? ayudanteResult.rows[0].id : null;
+      const estudianteId =
+        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
+
+      if (req.file && !estudianteId) {
+        return res.status(400).json({
+          error: "No se encontró al estudiante para guardar el archivo",
+        });
+      }
+
+      if (req.file) {
+        await agregarArchivoEstudiante(estudianteId, req.file);
+      }
 
       await pool.query(
         `INSERT INTO postulaciones_docente
@@ -627,7 +644,7 @@ app.post(
       VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente', 'Pendiente')`,
         [
           Number(ayudantiaId),
-          ayudanteId,
+          estudianteId,
           String(nombreEstudiante).trim(),
           String(emailEstudiante).trim().toLowerCase(),
           String(motivacion).trim(),
@@ -668,7 +685,9 @@ app.post(
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const documentos = req.file ? req.file.filename : "Sin archivos adjuntos";
+      const documentos = req.file
+        ? req.file.originalname
+        : "Sin archivos adjuntos";
 
       const ayudantia = await pool.query(
         "SELECT id FROM ayudantias_administrativas WHERE id = $1",
@@ -678,12 +697,22 @@ app.post(
         return res.status(404).json({ error: "Ayudantía no encontrada" });
       }
 
-      const ayudanteResult = await pool.query(
-        "SELECT id FROM ayudante WHERE email = $1",
+      const estudianteResult = await pool.query(
+        "SELECT id FROM estudiante WHERE email = $1",
         [String(emailEstudiante).trim().toLowerCase()],
       );
-      const ayudanteId =
-        ayudanteResult.rowCount > 0 ? ayudanteResult.rows[0].id : null;
+      const estudianteId =
+        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
+
+      if (req.file && !estudianteId) {
+        return res.status(400).json({
+          error: "No se encontró al estudiante para guardar el archivo",
+        });
+      }
+
+      if (req.file) {
+        await agregarArchivoEstudiante(estudianteId, req.file);
+      }
 
       await pool.query(
         `INSERT INTO postulaciones_administrativas
@@ -691,7 +720,7 @@ app.post(
       VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente', 'Pendiente')`,
         [
           Number(ayudantiaId),
-          ayudanteId,
+          estudianteId,
           String(nombreEstudiante).trim(),
           String(emailEstudiante).trim().toLowerCase(),
           String(motivacion).trim(),
@@ -1091,120 +1120,6 @@ app.post("/api/profesor/postulaciones/deseleccionar", async (req, res) => {
     });
   } catch (err) {
     console.error("Error en deseleccionar:", err);
-    return res.status(500).json({ error: "Error de servidor" });
-  }
-});
-
-app.post("/api/horas", async (req, res) => {
-  try {
-    const {
-      nombreAyudante,
-      emailAyudante,
-      semanaInicio,
-      horas,
-      ayudantiaDescripcion,
-    } = req.body;
-    if (
-      !nombreAyudante ||
-      !emailAyudante ||
-      !semanaInicio ||
-      horas === undefined ||
-      horas === null ||
-      horas === ""
-    ) {
-      return res.status(400).json({ error: "Faltan campos obligatorios" });
-    }
-
-    const horasNumber = Number(horas);
-    if (!Number.isFinite(horasNumber)) {
-      return res
-        .status(400)
-        .json({ error: "Ingrese una cantidad de horas válida y numérica" });
-    }
-
-    if (horasNumber <= 0) {
-      return res
-        .status(400)
-        .json({ error: "Las horas deben ser mayores a cero" });
-    }
-
-    const ayudanteResult = await pool.query(
-      "SELECT id FROM ayudante WHERE email = $1",
-      [String(emailAyudante).trim().toLowerCase()],
-    );
-    const ayudanteId =
-      ayudanteResult.rowCount > 0 ? ayudanteResult.rows[0].id : null;
-
-    await pool.query(
-      `INSERT INTO registro_horas
-      (ayudante_id, nombre_ayudante, email_ayudante, semana_inicio, horas, ayudantia_descripcion)
-      VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        ayudanteId,
-        String(nombreAyudante).trim(),
-        String(emailAyudante).trim().toLowerCase(),
-        semanaInicio,
-        horasNumber,
-        ayudantiaDescripcion ? String(ayudantiaDescripcion).trim() : null,
-      ],
-    );
-
-    return res.json({ ok: true, message: "Horas registradas correctamente" });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Error de servidor" });
-  }
-});
-
-app.get("/api/horas", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ error: "Debe indicar email" });
-    }
-    const result = await pool.query(
-      `SELECT id, semana_inicio, horas, ayudantia_descripcion, created_at
-       FROM registro_horas
-       WHERE email_ayudante = $1
-       ORDER BY semana_inicio DESC, created_at DESC`,
-      [String(email).trim().toLowerCase()],
-    );
-    return res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Error de servidor" });
-  }
-});
-
-app.get("/api/estudiante/ayudantias-activas", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ error: "Debe indicar email" });
-    }
-    const emailNorm = String(email).trim().toLowerCase();
-
-    const docenteResult = await pool.query(
-      `SELECT p.id AS postulacion_id, 'docente' AS fuente,
-              a.asignatura || ' — Paralelo ' || a.paralelo AS descripcion
-       FROM postulaciones_docente p
-       INNER JOIN ayudantias_docente a ON a.id = p.ayudantia_docente_id
-       WHERE p.email_estudiante = $1 AND p.estado = 'Seleccionado entrevista'`,
-      [emailNorm],
-    );
-
-    const adminResult = await pool.query(
-      `SELECT p.id AS postulacion_id, 'administrativa' AS fuente,
-              a.glosa AS descripcion
-       FROM postulaciones_administrativas p
-       INNER JOIN ayudantias_administrativas a ON a.id = p.ayudantia_administrativa_id
-       WHERE p.email_estudiante = $1 AND p.estado = 'Seleccionado entrevista'`,
-      [emailNorm],
-    );
-
-    return res.json([...docenteResult.rows, ...adminResult.rows]);
-  } catch (err) {
-    console.error(err);
     return res.status(500).json({ error: "Error de servidor" });
   }
 });
