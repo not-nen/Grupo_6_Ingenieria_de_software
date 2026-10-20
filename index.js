@@ -108,6 +108,10 @@ async function initDb() {
       email_estudiante VARCHAR(160) NOT NULL,
       motivacion TEXT NOT NULL,
       documentos TEXT NOT NULL,
+      archivos JSONB NOT NULL DEFAULT '[]'::jsonb,
+      archivo_nombre VARCHAR(255),
+      archivo_mime VARCHAR(120),
+      archivo_contenido BYTEA,
       estado VARCHAR(40) NOT NULL DEFAULT 'Pendiente',
       respuesta VARCHAR(120) NOT NULL DEFAULT 'Pendiente',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -124,6 +128,10 @@ async function initDb() {
       email_estudiante VARCHAR(160) NOT NULL,
       motivacion TEXT NOT NULL,
       documentos TEXT NOT NULL,
+      archivos JSONB NOT NULL DEFAULT '[]'::jsonb,
+      archivo_nombre VARCHAR(255),
+      archivo_mime VARCHAR(120),
+      archivo_contenido BYTEA,
       estado VARCHAR(40) NOT NULL DEFAULT 'Pendiente',
       respuesta VARCHAR(120) NOT NULL DEFAULT 'Pendiente',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -151,6 +159,47 @@ async function initDb() {
       password VARCHAR(160) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE postulaciones_docente
+      ADD COLUMN IF NOT EXISTS archivo_nombre VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS archivo_mime VARCHAR(120),
+      ADD COLUMN IF NOT EXISTS archivo_contenido BYTEA
+  `);
+  await pool.query(`
+    ALTER TABLE postulaciones_administrativas
+      ADD COLUMN IF NOT EXISTS archivo_nombre VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS archivo_mime VARCHAR(120),
+      ADD COLUMN IF NOT EXISTS archivo_contenido BYTEA
+  `);
+  await pool.query(`
+    ALTER TABLE postulaciones_docente
+      ADD COLUMN IF NOT EXISTS archivos JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+  await pool.query(`
+    ALTER TABLE postulaciones_administrativas
+      ADD COLUMN IF NOT EXISTS archivos JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+  await pool.query(`
+    UPDATE postulaciones_docente
+    SET archivos = jsonb_build_array(jsonb_build_object(
+      'nombre', archivo_nombre,
+      'mime', COALESCE(archivo_mime, 'application/octet-stream'),
+      'contenido', encode(archivo_contenido, 'base64')
+    ))
+    WHERE archivo_contenido IS NOT NULL
+      AND jsonb_array_length(COALESCE(archivos, '[]'::jsonb)) = 0
+  `);
+  await pool.query(`
+    UPDATE postulaciones_administrativas
+    SET archivos = jsonb_build_array(jsonb_build_object(
+      'nombre', archivo_nombre,
+      'mime', COALESCE(archivo_mime, 'application/octet-stream'),
+      'contenido', encode(archivo_contenido, 'base64')
+    ))
+    WHERE archivo_contenido IS NOT NULL
+      AND jsonb_array_length(COALESCE(archivos, '[]'::jsonb)) = 0
   `);
 
   // Nota: se removieron los inserts "semilla" de ayudantías.
@@ -328,6 +377,106 @@ function getRoleConfig(role) {
   return null;
 }
 
+function conUrlArchivo(rows) {
+  return rows.map((item) => {
+    const nombres = Array.isArray(item.nombres_archivos)
+      ? item.nombres_archivos
+      : [];
+    let archivos = nombres.map((nombre, indice) => ({
+      nombre: nombre || `Archivo ${indice + 1}`,
+      url: `/api/profesor/postulaciones/${item.fuente}/${item.postulacion_id}/archivo/${indice}`,
+    }));
+    if (archivos.length === 0 && item.tiene_archivo) {
+      archivos = [
+        {
+          nombre: item.documentos || "Archivo",
+          url: `/api/profesor/postulaciones/${item.fuente}/${item.postulacion_id}/archivo/0`,
+        },
+      ];
+    }
+    return {
+      ...item,
+      archivos,
+      archivo_url: archivos[0] ? archivos[0].url : null,
+    };
+  });
+}
+
+function idsAyudantiaDesdeBody(body) {
+  const raw = body.ayudantiaId;
+  const lista = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return [
+    ...new Set(lista.map((id) => String(id).trim()).filter(Boolean)),
+  ];
+}
+
+function listaArchivosRequest(req) {
+  if (Array.isArray(req.files) && req.files.length > 0) return req.files;
+  if (req.file) return [req.file];
+  return [];
+}
+
+function responderErrorSubida(err, res) {
+  if (err.code === "LIMIT_FILE_SIZE") {
+    res.status(400).json({ error: "Un archivo supera el límite de 15 MB" });
+    return true;
+  }
+  if (err.code === "LIMIT_UNEXPECTED_FILE") {
+    res.status(400).json({ error: "Puedes adjuntar hasta 10 archivos" });
+    return true;
+  }
+  return false;
+}
+
+async function insertarPostulacionConArchivos({
+  tabla,
+  columnaAyudantia,
+  ayudantiaId,
+  estudianteId,
+  nombreEstudiante,
+  emailEstudiante,
+  motivacion,
+  files,
+  fuente,
+}) {
+  const payload = files.map((file) => ({
+    nombre: file.originalname,
+    mime: file.mimetype || "application/octet-stream",
+    tamano: file.size,
+    contenido: file.buffer.toString("base64"),
+  }));
+  const documentos = payload.length
+    ? payload.map((archivo) => archivo.nombre).join(", ")
+    : "Sin archivos adjuntos";
+  const primero = files[0];
+  const insertResult = await pool.query(
+    `INSERT INTO ${tabla}
+     (${columnaAyudantia}, ayudante_id, nombre_estudiante, email_estudiante, motivacion, documentos, archivo_nombre, archivo_mime, archivo_contenido, archivos, estado, respuesta)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, 'Pendiente', 'Pendiente')
+     RETURNING id`,
+    [
+      Number(ayudantiaId),
+      estudianteId,
+      nombreEstudiante,
+      emailEstudiante,
+      motivacion,
+      documentos,
+      primero ? primero.originalname : null,
+      primero ? primero.mimetype || "application/octet-stream" : null,
+      primero ? primero.buffer : null,
+      JSON.stringify(payload),
+    ],
+  );
+  const postulacionId = insertResult.rows[0].id;
+  for (const file of files) {
+    await agregarArchivoEstudiante(estudianteId, file, {
+      postulacionId,
+      fuente,
+    });
+  }
+  return postulacionId;
+}
+
 function getOrderClause(orderBy) {
   if (orderBy === "nombre") return "p.nombre_estudiante ASC";
   if (orderBy === "estado") return "p.estado ASC, p.created_at DESC";
@@ -360,13 +509,15 @@ function getCurrentUserFromRequest(req) {
   }
 }
 
-async function agregarArchivoEstudiante(estudianteId, file) {
+async function agregarArchivoEstudiante(estudianteId, file, referencia = {}) {
   const entrada = {
     nombre: file.originalname,
     mime: file.mimetype || "application/octet-stream",
     tamano: file.size,
     contenido: file.buffer.toString("base64"),
     subido_en: new Date().toISOString(),
+    postulacion_id: referencia.postulacionId || null,
+    fuente: referencia.fuente || null,
   };
 
   await pool.query(
@@ -594,24 +745,36 @@ app.get("/api/estudiante/postulaciones", async (req, res) => {
 
 app.post(
   "/api/postulaciones/docente",
-  upload.single("archivos"),
+  upload.array("archivos", 10),
   async (req, res) => {
     try {
-      const { ayudantiaId, nombreEstudiante, emailEstudiante, motivacion } =
-        req.body;
+      const { nombreEstudiante, emailEstudiante, motivacion } = req.body;
+      const ids = idsAyudantiaDesdeBody(req.body);
+      const files = listaArchivosRequest(req);
 
-      if (
-        !ayudantiaId ||
-        !nombreEstudiante ||
-        !emailEstudiante ||
-        !motivacion
-      ) {
+      if (ids.length > 1) {
+        return res
+          .status(400)
+          .json({ error: "Solo puedes postular a una ayudantía por envío" });
+      }
+
+      if (!ids.length || !nombreEstudiante || !emailEstudiante || !motivacion) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const documentos = req.file
-        ? req.file.originalname
-        : "Sin archivos adjuntos";
+      const ayudantiaId = ids[0];
+      const estudianteResult = await pool.query(
+        "SELECT id FROM estudiante WHERE email = $1",
+        [String(emailEstudiante).trim().toLowerCase()],
+      );
+      const estudianteId =
+        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
+
+      if (files.length && !estudianteId) {
+        return res.status(400).json({
+          error: "No se encontró al estudiante para guardar el archivo",
+        });
+      }
 
       const ayudantia = await pool.query(
         "SELECT id FROM ayudantias_docente WHERE id = $1",
@@ -621,47 +784,24 @@ app.post(
         return res.status(404).json({ error: "Ayudantía no encontrada" });
       }
 
-      const estudianteResult = await pool.query(
-        "SELECT id FROM estudiante WHERE email = $1",
-        [String(emailEstudiante).trim().toLowerCase()],
-      );
-      const estudianteId =
-        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
-
-      if (req.file && !estudianteId) {
-        return res.status(400).json({
-          error: "No se encontró al estudiante para guardar el archivo",
-        });
-      }
-
-      if (req.file) {
-        await agregarArchivoEstudiante(estudianteId, req.file);
-      }
-
-      await pool.query(
-        `INSERT INTO postulaciones_docente
-      (ayudantia_docente_id, ayudante_id, nombre_estudiante, email_estudiante, motivacion, documentos, estado, respuesta)
-      VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente', 'Pendiente')`,
-        [
-          Number(ayudantiaId),
-          estudianteId,
-          String(nombreEstudiante).trim(),
-          String(emailEstudiante).trim().toLowerCase(),
-          String(motivacion).trim(),
-          documentos,
-        ],
-      );
+      await insertarPostulacionConArchivos({
+        tabla: "postulaciones_docente",
+        columnaAyudantia: "ayudantia_docente_id",
+        ayudantiaId,
+        estudianteId,
+        nombreEstudiante: String(nombreEstudiante).trim(),
+        emailEstudiante: String(emailEstudiante).trim().toLowerCase(),
+        motivacion: String(motivacion).trim(),
+        files,
+        fuente: "docente",
+      });
 
       return res.json({
         ok: true,
         message: "Postulación registrada con estado Pendiente",
       });
     } catch (err) {
-      if (err.code === "LIMIT_FILE_SIZE") {
-        return res
-          .status(400)
-          .json({ error: "Un archivo supera el límite de 15 MB" });
-      }
+      if (responderErrorSubida(err, res)) return;
       console.error(err);
       return res.status(500).json({ error: "Error de servidor" });
     }
@@ -670,24 +810,36 @@ app.post(
 
 app.post(
   "/api/postulaciones/administrativa",
-  upload.single("archivos"),
+  upload.array("archivos", 10),
   async (req, res) => {
     try {
-      const { ayudantiaId, nombreEstudiante, emailEstudiante, motivacion } =
-        req.body;
+      const { nombreEstudiante, emailEstudiante, motivacion } = req.body;
+      const ids = idsAyudantiaDesdeBody(req.body);
+      const files = listaArchivosRequest(req);
 
-      if (
-        !ayudantiaId ||
-        !nombreEstudiante ||
-        !emailEstudiante ||
-        !motivacion
-      ) {
+      if (ids.length > 1) {
+        return res
+          .status(400)
+          .json({ error: "Solo puedes postular a una ayudantía por envío" });
+      }
+
+      if (!ids.length || !nombreEstudiante || !emailEstudiante || !motivacion) {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
 
-      const documentos = req.file
-        ? req.file.originalname
-        : "Sin archivos adjuntos";
+      const ayudantiaId = ids[0];
+      const estudianteResult = await pool.query(
+        "SELECT id FROM estudiante WHERE email = $1",
+        [String(emailEstudiante).trim().toLowerCase()],
+      );
+      const estudianteId =
+        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
+
+      if (files.length && !estudianteId) {
+        return res.status(400).json({
+          error: "No se encontró al estudiante para guardar el archivo",
+        });
+      }
 
       const ayudantia = await pool.query(
         "SELECT id FROM ayudantias_administrativas WHERE id = $1",
@@ -697,47 +849,24 @@ app.post(
         return res.status(404).json({ error: "Ayudantía no encontrada" });
       }
 
-      const estudianteResult = await pool.query(
-        "SELECT id FROM estudiante WHERE email = $1",
-        [String(emailEstudiante).trim().toLowerCase()],
-      );
-      const estudianteId =
-        estudianteResult.rowCount > 0 ? estudianteResult.rows[0].id : null;
-
-      if (req.file && !estudianteId) {
-        return res.status(400).json({
-          error: "No se encontró al estudiante para guardar el archivo",
-        });
-      }
-
-      if (req.file) {
-        await agregarArchivoEstudiante(estudianteId, req.file);
-      }
-
-      await pool.query(
-        `INSERT INTO postulaciones_administrativas
-      (ayudantia_administrativa_id, ayudante_id, nombre_estudiante, email_estudiante, motivacion, documentos, estado, respuesta)
-      VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente', 'Pendiente')`,
-        [
-          Number(ayudantiaId),
-          estudianteId,
-          String(nombreEstudiante).trim(),
-          String(emailEstudiante).trim().toLowerCase(),
-          String(motivacion).trim(),
-          documentos,
-        ],
-      );
+      await insertarPostulacionConArchivos({
+        tabla: "postulaciones_administrativas",
+        columnaAyudantia: "ayudantia_administrativa_id",
+        ayudantiaId,
+        estudianteId,
+        nombreEstudiante: String(nombreEstudiante).trim(),
+        emailEstudiante: String(emailEstudiante).trim().toLowerCase(),
+        motivacion: String(motivacion).trim(),
+        files,
+        fuente: "administrativa",
+      });
 
       return res.json({
         ok: true,
         message: "Postulación registrada con estado Pendiente",
       });
     } catch (err) {
-      if (err.code === "LIMIT_FILE_SIZE") {
-        return res
-          .status(400)
-          .json({ error: "Un archivo supera el límite de 15 MB" });
-      }
+      if (responderErrorSubida(err, res)) return;
       console.error(err);
       return res.status(500).json({ error: "Error de servidor" });
     }
@@ -761,6 +890,68 @@ app.get("/api/profesor/ramos", async (req, res) => {
   }
 });
 
+function enviarArchivo(res, nombre, mime, contenido) {
+  const seguro = nombre || "archivo";
+  const ascii = seguro.replace(/[^\w.\- ]+/g, "_") || "archivo";
+  res.setHeader("Content-Type", mime || "application/octet-stream");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(seguro)}`,
+  );
+  return res.send(contenido);
+}
+
+app.get(
+  "/api/profesor/postulaciones/:fuente/:id/archivo/:indice?",
+  async (req, res) => {
+    try {
+      const tablas = {
+        docente: "postulaciones_docente",
+        administrativa: "postulaciones_administrativas",
+      };
+      const tabla = tablas[req.params.fuente];
+      const id = Number(req.params.id);
+      const indice =
+        req.params.indice === undefined ? 0 : Number(req.params.indice);
+      if (!tabla || !Number.isInteger(id) || id <= 0 || !Number.isInteger(indice) || indice < 0) {
+        return res.status(400).json({ error: "Archivo no válido" });
+      }
+
+      const result = await pool.query(
+        `SELECT archivos, archivo_nombre, archivo_mime, archivo_contenido
+         FROM ${tabla}
+         WHERE id = $1`,
+        [id],
+      );
+      const fila = result.rows[0];
+      const lista = Array.isArray(fila?.archivos) ? fila.archivos : [];
+      const elegido = lista[indice];
+      if (elegido?.contenido) {
+        return enviarArchivo(
+          res,
+          elegido.nombre,
+          elegido.mime,
+          Buffer.from(elegido.contenido, "base64"),
+        );
+      }
+      if (indice === 0 && fila?.archivo_contenido) {
+        return enviarArchivo(
+          res,
+          fila.archivo_nombre,
+          fila.archivo_mime,
+          fila.archivo_contenido,
+        );
+      }
+      return res
+        .status(404)
+        .json({ error: "Esta postulación no tiene archivo" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Error de servidor" });
+    }
+  },
+);
+
 app.get("/api/profesor/postulaciones", async (req, res) => {
   try {
     const { fuente, ayudantiaId, orderBy } = req.query;
@@ -780,6 +971,11 @@ app.get("/api/profesor/postulaciones", async (req, res) => {
                p.email_estudiante,
                p.motivacion,
                p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
                p.estado,
                p.respuesta,
                p.created_at,
@@ -799,6 +995,11 @@ app.get("/api/profesor/postulaciones", async (req, res) => {
                p.email_estudiante,
                p.motivacion,
                p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
                p.estado,
                p.respuesta,
                p.created_at,
@@ -813,7 +1014,7 @@ app.get("/api/profesor/postulaciones", async (req, res) => {
     }
 
     const result = await pool.query(query, [Number(ayudantiaId)]);
-    const postulaciones = result.rows;
+    const postulaciones = conUrlArchivo(result.rows);
 
     const agrupados = {};
     const seleccionados = [];
@@ -850,6 +1051,11 @@ app.get("/api/profesor/postulaciones/todas-docentes", async (req, res) => {
              p.email_estudiante,
              p.motivacion,
              p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
              p.estado,
              p.respuesta,
              p.created_at,
@@ -860,7 +1066,7 @@ app.get("/api/profesor/postulaciones/todas-docentes", async (req, res) => {
     `;
 
     const result = await pool.query(query);
-    const postulaciones = result.rows;
+    const postulaciones = conUrlArchivo(result.rows);
 
     const agrupados = {};
     const seleccionados = [];
@@ -899,6 +1105,11 @@ app.get(
              p.email_estudiante,
              p.motivacion,
              p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
              p.estado,
              p.respuesta,
              p.created_at,
@@ -909,7 +1120,7 @@ app.get(
     `;
 
       const result = await pool.query(query);
-      const postulaciones = result.rows;
+      const postulaciones = conUrlArchivo(result.rows);
 
       const agrupados = {};
       const seleccionados = [];
@@ -1039,6 +1250,11 @@ app.post("/api/profesor/postulaciones/deseleccionar", async (req, res) => {
                  p.email_estudiante,
                  p.motivacion,
                  p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
                  p.estado,
                  p.respuesta,
                  p.created_at,
@@ -1066,6 +1282,11 @@ app.post("/api/profesor/postulaciones/deseleccionar", async (req, res) => {
                  p.email_estudiante,
                  p.motivacion,
                  p.documentos,
+               COALESCE((
+                 SELECT jsonb_agg(elem->>'nombre' ORDER BY ord)
+                 FROM jsonb_array_elements(COALESCE(p.archivos, '[]'::jsonb)) WITH ORDINALITY AS t(elem, ord)
+               ), '[]'::jsonb) AS nombres_archivos,
+               (jsonb_array_length(COALESCE(p.archivos, '[]'::jsonb)) > 0 OR p.archivo_contenido IS NOT NULL) AS tiene_archivo,
                  p.estado,
                  p.respuesta,
                  p.created_at,
@@ -1111,7 +1332,7 @@ app.post("/api/profesor/postulaciones/deseleccionar", async (req, res) => {
 
     // Obtener la fila actualizada
     const refreshResult = await pool.query(config.selectQuery, [post.id]);
-    const refreshed = refreshResult.rows[0];
+    const refreshed = conUrlArchivo(refreshResult.rows)[0];
 
     return res.json({
       ok: true,

@@ -243,6 +243,19 @@
                     .join("");
             }
 
+            function celdaDocumentos(item) {
+                const archivos = Array.isArray(item.archivos) ? item.archivos : [];
+                if (archivos.length === 0) {
+                    return escapeHtml(item.documentos || "Sin archivos adjuntos");
+                }
+                return archivos
+                    .map(
+                        (archivo) =>
+                            `<a href="${escapeHtml(archivo.url)}" target="_blank" rel="noopener">${escapeHtml(archivo.nombre)}</a>`,
+                    )
+                    .join("<br>");
+            }
+
             function renderTabla(
                 rows,
                 includeAction = false,
@@ -277,7 +290,7 @@
                   <td>${escapeHtml(item.nombre_estudiante)}</td>
                   <td>${escapeHtml(item.email_estudiante)}</td>
                   <td>${escapeHtml(item.motivacion)}</td>
-                  <td>${escapeHtml(item.documentos)}</td>
+                  <td>${celdaDocumentos(item)}</td>
                   <td>${escapeHtml(item.estado)}</td>
                   <td>${escapeHtml(new Date(item.fecha_estado).toLocaleString())}</td>
                   ${includeAction ? `<td><button class="${escapeHtml(actionClass)}" data-fuente="${escapeHtml(item.fuente)}" data-id="${escapeHtml(item.postulacion_id)}">${escapeHtml(actionText)}</button></td>` : ""}
