@@ -181,11 +181,9 @@
                             >Ayudantía administrativa/investigación
                             disponible</label
                         >
-                        <select
-                            id="ayudantiaId"
-                            name="ayudantiaId"
-                            required
-                        ></select>
+                        <select id="ayudantiaId" name="ayudantiaId" required>
+                            <option value="">Selecciona una ayudantía</option>
+                        </select>
                     </div>
 
                     <div class="field">
@@ -199,10 +197,15 @@
 
                     <div class="field">
                         <label for="archivos"
-                            >Archivo adjunto (máx. 15 MB)</label
+                            >Archivos adjuntos (máx. 15 MB cada uno)</label
                         >
                         <div class="file-input-wrapper">
-                            <input type="file" id="archivos" name="archivos" />
+                            <input
+                                type="file"
+                                id="archivos"
+                                name="archivos"
+                                multiple
+                            />
                         </div>
                         <ul id="listaArchivos" class="file-list"></ul>
                     </div>
@@ -228,6 +231,7 @@
             const listaArchivos = document.getElementById("listaArchivos");
             const statusEl = document.getElementById("status");
             let ayudantiasDisponibles = [];
+            let archivosElegidos = [];
 
             const MAX_FILE_MB = 15;
             const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
@@ -308,6 +312,7 @@
                     );
                     return coincideSede && (!query || texto.includes(query));
                 });
+                const previa = selectAyudantia.value;
                 if (filtradas.length === 0) {
                     selectAyudantia.innerHTML =
                         '<option value="">No hay ayudantías para ese filtro</option>';
@@ -315,12 +320,17 @@
                     return;
                 }
                 selectAyudantia.disabled = false;
-                selectAyudantia.innerHTML = filtradas
-                    .map(
-                        (item) =>
-                            `<option value="${item.id}">${item.glosa} | ${item.tipo_ayudantia} | ${item.emplazamiento} | ${item.horas} hrs</option>`,
-                    )
-                    .join("");
+                selectAyudantia.innerHTML =
+                    '<option value="">Selecciona una ayudantía</option>' +
+                    filtradas
+                        .map(
+                            (item) =>
+                                `<option value="${item.id}">${item.glosa} | ${item.tipo_ayudantia} | ${item.emplazamiento} | ${item.horas} hrs</option>`,
+                        )
+                        .join("");
+                if (filtradas.some((item) => String(item.id) === previa)) {
+                    selectAyudantia.value = previa;
+                }
             }
 
             async function parseJsonResponse(response) {
@@ -370,17 +380,32 @@
             }
 
             function actualizarListaArchivos() {
-                const file = archivosInput.files[0];
-                if (!file) {
+                if (archivosElegidos.length === 0) {
                     listaArchivos.innerHTML = "";
                     return;
                 }
-                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                const excede = file.size > MAX_FILE_BYTES;
-                listaArchivos.innerHTML = `<li${excede ? ' class="file-item-error"' : ""}>${file.name} (${sizeMB} MB)${excede ? " — supera el límite de 15 MB" : ""}</li>`;
+                listaArchivos.innerHTML = archivosElegidos
+                    .map((file) => {
+                        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                        const excede = file.size > MAX_FILE_BYTES;
+                        return `<li${excede ? ' class="file-item-error"' : ""}>${file.name} (${sizeMB} MB)${excede ? " — supera el límite de 15 MB" : ""}</li>`;
+                    })
+                    .join("");
             }
 
-            archivosInput.addEventListener("change", actualizarListaArchivos);
+            archivosInput.addEventListener("change", () => {
+                for (const file of archivosInput.files) {
+                    const repetido = archivosElegidos.some(
+                        (actual) =>
+                            actual.name === file.name &&
+                            actual.size === file.size &&
+                            actual.lastModified === file.lastModified,
+                    );
+                    if (!repetido) archivosElegidos.push(file);
+                }
+                archivosInput.value = "";
+                actualizarListaArchivos();
+            });
 
             buscadorAyudantia.addEventListener("input", renderAyudantias);
             filtroSede.addEventListener("change", renderAyudantias);
@@ -392,10 +417,19 @@
 
                 if (!cargarUsuarioActual()) return;
 
-                const file = archivosInput.files[0];
-                if (file && file.size > MAX_FILE_BYTES) {
+                if (!selectAyudantia.value) {
+                    statusEl.textContent = "Selecciona una ayudantía.";
+                    return;
+                }
+                if (archivosElegidos.length > 10) {
+                    statusEl.textContent = "Puedes adjuntar hasta 10 archivos.";
+                    return;
+                }
+                if (
+                    archivosElegidos.some((file) => file.size > MAX_FILE_BYTES)
+                ) {
                     statusEl.textContent =
-                        "El archivo supera el límite de 15 MB.";
+                        "Cada archivo debe pesar como máximo 15 MB.";
                     return;
                 }
 
@@ -407,7 +441,9 @@
                     "motivacion",
                     document.getElementById("motivacion").value,
                 );
-                if (file) formData.append("archivos", file);
+                for (const file of archivosElegidos) {
+                    formData.append("archivos", file);
+                }
 
                 const response = await fetch(
                     "/api/postulaciones/administrativa",
@@ -425,6 +461,7 @@
                 statusEl.textContent = data.message;
                 statusEl.classList.add("ok");
                 form.reset();
+                archivosElegidos = [];
                 listaArchivos.innerHTML = "";
                 cargarUsuarioActual();
                 await cargarAyudantias();
