@@ -1,7 +1,10 @@
 # Ingeniería de Software, grupo 6
 
 ## INSTRUCCIONES DE ARRANQUE
-Con Docker Desktop abierto, ejecutar el comando `docker compose up -d` para levantar los contenedores, estando en la carpeta base del proyecto, y dirigirse a <localhost:3000>
+Con Docker Desktop abierto
+Para levantar el proyecto, ejecutar el siguiente comando: `docker compose up --build`
+Para detener los contenedores del proyecto, ejecutar el siguiente comando: `docker compose down -v`
+Para acceder a la página del proyecto, dirigirse a la url `http://localhost:3000` en un navegador web
 
 ## INSTRUCCIONES DE USO
 Al abrir la página, se llegará a la sección de login, dónde primero se tendrá que crear una cuenta en cada tipo de usuario para acceder a sus respectivas vistas. Cómo la página asume que los usuarios ya tienen una cuenta usm, no verifica el correo ni la contraseña, por lo que se pueden llenar de cualquier forma.
