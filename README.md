@@ -2,8 +2,11 @@
 
 ## INSTRUCCIONES DE ARRANQUE
 Con Docker Desktop abierto
+
 Para levantar el proyecto, ejecutar el siguiente comando: `docker compose up --build`
+
 Para detener los contenedores del proyecto, ejecutar el siguiente comando: `docker compose down -v`
+
 Para acceder a la página del proyecto, dirigirse a la url `http://localhost:3000` en un navegador web
 
 ## INSTRUCCIONES DE USO
