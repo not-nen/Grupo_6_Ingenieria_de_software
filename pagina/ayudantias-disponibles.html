@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+        <title>Ayudantías disponibles</title>
+        <style>
+            :root {
+                --accent-green: #668c61;
+                --accent-green-hover: #21451b;
+                --border: #d8e0e6;
+                --muted: #6b7280;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background: #f4f6f8;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                color: #1f2937;
+            }
+            .wrap {
+                width: min(1200px, 94vw);
+                margin: 24px auto;
+            }
+            .card {
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: #fff;
+                padding: 20px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            }
+            h1 {
+                margin: 0 0 6px;
+                font-size: 1.5rem;
+            }
+            .sub {
+                margin: 0 0 16px;
+                color: var(--muted);
+            }
+            .tabs {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 14px;
+                flex-wrap: wrap;
+            }
+            .tab {
+                border: 1px solid var(--accent-green);
+                background: #fff;
+                color: var(--accent-green-hover);
+                border-radius: 8px;
+                padding: 8px 14px;
+                font-weight: 700;
+                cursor: pointer;
+                font-size: 0.92rem;
+            }
+            .tab.active {
+                background: var(--accent-green);
+                color: #fff;
+            }
+            .filters {
+                display: grid;
+                grid-template-columns: 2fr 1fr auto;
+                gap: 10px;
+                align-items: end;
+                margin-bottom: 12px;
+            }
+            label {
+                display: block;
+                margin-bottom: 4px;
+                font-size: 0.88rem;
+            }
+            input,
+            select {
+                width: 100%;
+                border: 1px solid #d5dde3;
+                border-radius: 8px;
+                padding: 9px 10px;
+                font-size: 0.95rem;
+            }
+            .count {
+                color: var(--muted);
+                font-size: 0.88rem;
+                padding-bottom: 10px;
+                white-space: nowrap;
+            }
+            .table-wrap {
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+            th,
+            td {
+                border: 1px solid #d9d9d9;
+                padding: 7px 6px;
+                text-align: center;
+                vertical-align: middle;
+            }
+            th {
+                background: #f4f7fa;
+                font-weight: 700;
+            }
+            td.left {
+                text-align: left;
+            }
+            .empty td {
+                padding: 20px 12px;
+                color: var(--muted);
+                font-weight: 600;
+            }
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 6px 10px;
+                border-radius: 8px;
+                background: var(--accent-green);
+                color: #fff;
+                font-weight: 700;
+                font-size: 12px;
+                text-decoration: none;
+                white-space: nowrap;
+            }
+            .btn:hover {
+                background: var(--accent-green-hover);
+            }
+            .badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 999px;
+                background: #e5e7eb;
+                color: #374151;
+                font-size: 11px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+            .back {
+                display: inline-block;
+                margin-top: 14px;
+                color: var(--accent-green-hover);
+                font-weight: 700;
+                text-decoration: none;
+            }
+            .error {
+                color: #7f1d1d;
+            }
+
+            @media (max-width: 720px) {
+                .filters {
+                    grid-template-columns: 1fr;
+                }
+                .count {
+                    padding-bottom: 0;
+                }
+                table,
+                thead,
+                tbody,
+                tr,
+                td {
+                    display: block;
+                    width: 100%;
+                }
+                thead {
+                    display: none;
+                }
+                tbody tr {
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    margin-bottom: 10px;
+                    padding: 6px 10px;
+                }
+                td {
+                    border: none;
+                    border-bottom: 1px dashed #e5e7eb;
+                    text-align: right;
+                    padding: 6px 0;
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                td:last-child {
+                    border-bottom: none;
+                }
+                td.left {
+                    text-align: right;
+                }
+                td::before {
+                    content: attr(data-label);
+                    font-weight: 700;
+                    color: var(--muted);
+                    text-align: left;
+                }
+                .empty td {
+                    justify-content: center;
+                }
+                .empty td::before {
+                    content: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main class="wrap">
+            <section class="card">
+                <h1>Ayudantías disponibles</h1>
+                <p class="sub">
+                    Ayudantías abiertas actualmente para postular.
+                </p>
+
+                <div class="tabs" role="tablist">
+                    <button
+                        type="button"
+                        class="tab active"
+                        data-tipo="docente"
+                        role="tab"
+                    >
+                        Docentes
+                    </button>
+                    <button
+                        type="button"
+                        class="tab"
+                        data-tipo="administrativa"
+                        role="tab"
+                    >
+                        Administrativas / Investigación
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <div>
+                        <label for="buscador">Buscar</label>
+                        <input
+                            id="buscador"
+                            type="search"
+                            placeholder="Nombre, sigla o código"
+                            autocomplete="off"
+                        />
+                    </div>
+                    <div>
+                        <label for="filtroSede">Sede</label>
+                        <select id="filtroSede">
+                            <option value="all">Todas las sedes</option>
+                        </select>
+                    </div>
+                    <div class="count" id="contador"></div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead id="tablaHead"></thead>
+                        <tbody id="tablaBody">
+                            <tr class="empty">
+                                <td colspan="9">Cargando ayudantías...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <a class="back" href="/estudiante">Volver</a>
+            </section>
+        </main>
+
+        <script src="/utils.js"></script>
+        <script>
+            const COLUMNAS = {
+                docente: [
+                    ["Asignatura", (i) => i.asignatura, "left"],
+                    ["Paralelo", (i) => i.paralelo],
+                    ["Sede", (i) => i.emplazamiento],
+                    ["Departamento", (i) => i.departamento],
+                    ["Categoría", (i) => i.categoria],
+                    ["Inicio", (i) => formatFecha(i.inicio)],
+                    ["Término", (i) => formatFecha(i.termino)],
+                    ["Horas", (i) => i.horas],
+                ],
+                administrativa: [
+                    ["Glosa", (i) => i.glosa, "left"],
+                    ["Código", (i) => i.codigo],
+                    ["Tipo", (i) => i.tipo_ayudantia],
+                    ["Sede", (i) => i.emplazamiento],
+                    ["Departamento", (i) => i.departamento],
+                    ["Inicio", (i) => formatFecha(i.inicio)],
+                    ["Término", (i) => formatFecha(i.termino)],
+                    ["Horas", (i) => i.horas],
+                ],
+            };
+            const URL_POSTULAR = {
+                docente: "/postula-docente",
+                administrativa: "/postula-administrativa",
+            };
+
+            const datos = { docente: [], administrativa: [] };
+            const yaPostulado = { docente: new Set(), administrativa: new Set() };
+            let tipoActual = "docente";
+
+            const tablaHead = document.getElementById("tablaHead");
+            const tablaBody = document.getElementById("tablaBody");
+            const buscador = document.getElementById("buscador");
+            const filtroSede = document.getElementById("filtroSede");
+            const contador = document.getElementById("contador");
+
+            function normalizar(v) {
+                return String(v ?? "")
+                    .normalize("NFD")
+                    .replace(/[̀-ͯ]/g, "")
+                    .toLowerCase()
+                    .trim();
+            }
+
+            function formatFecha(v) {
+                if (!v) return "-";
+                const d = new Date(v);
+                return Number.isNaN(d.getTime())
+                    ? "-"
+                    : d.toLocaleDateString("es-CL", { timeZone: "UTC" });
+            }
+
+            function filaVacia(msg, clase = "") {
+                return `<tr class="empty"><td colspan="9" class="${clase}">${escapeHtml(msg)}</td></tr>`;
+            }
+
+            function poblarSedes() {
+                const sedes = [
+                    ...new Set(
+                        datos[tipoActual]
+                            .map((i) => String(i.emplazamiento ?? "").trim())
+                            .filter(Boolean),
+                    ),
+                ].sort((a, b) => a.localeCompare(b, "es"));
+                const previa = filtroSede.value;
+                filtroSede.innerHTML =
+                    '<option value="all">Todas las sedes</option>' +
+                    sedes
+                        .map(
+                            (s) =>
+                                `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`,
+                        )
+                        .join("");
+                filtroSede.value = sedes.includes(previa) ? previa : "all";
+            }
+
+            function render() {
+                const cols = COLUMNAS[tipoActual];
+                tablaHead.innerHTML =
+                    "<tr>" +
+                    cols.map(([t]) => `<th>${t}</th>`).join("") +
+                    "<th>Acción</th></tr>";
+
+                const q = normalizar(buscador.value);
+                const sede = filtroSede.value;
+                const lista = datos[tipoActual].filter((i) => {
+                    const okSede =
+                        sede === "all" ||
+                        normalizar(i.emplazamiento) === normalizar(sede);
+                    const texto = normalizar(
+                        cols.map(([, f]) => f(i)).join(" ") + " " + i.codigo,
+                    );
+                    return okSede && (!q || texto.includes(q));
+                });
+
+                contador.textContent = `${lista.length} de ${datos[tipoActual].length}`;
+
+                if (datos[tipoActual].length === 0) {
+                    tablaBody.innerHTML = filaVacia(
+                        "No hay ayudantías disponibles en este momento",
+                    );
+                    return;
+                }
+                if (lista.length === 0) {
+                    tablaBody.innerHTML = filaVacia(
+                        "No hay ayudantías para ese filtro",
+                    );
+                    return;
+                }
+
+                tablaBody.innerHTML = lista
+                    .map((i) => {
+                        const celdas = cols
+                            .map(
+                                ([t, f, cls]) =>
+                                    `<td data-label="${t}" class="${cls || ""}">${escapeHtml(f(i) ?? "-")}</td>`,
+                            )
+                            .join("");
+                        const accion = yaPostulado[tipoActual].has(i.codigo)
+                            ? '<span class="badge">Ya postulaste</span>'
+                            : `<a class="btn" href="${URL_POSTULAR[tipoActual]}">Postular</a>`;
+                        return `<tr>${celdas}<td data-label="Acción">${accion}</td></tr>`;
+                    })
+                    .join("");
+            }
+
+            async function getJson(url) {
+                const r = await fetch(url, { credentials: "same-origin" });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || "Error de servidor");
+                return data;
+            }
+
+            async function cargar() {
+                try {
+                    const [doc, adm] = await Promise.all([
+                        getJson("/api/ayudantias/docente"),
+                        getJson("/api/ayudantias/administrativa"),
+                    ]);
+                    datos.docente = Array.isArray(doc) ? doc : [];
+                    datos.administrativa = Array.isArray(adm) ? adm : [];
+                } catch (err) {
+                    console.error("RS11 cargar ayudantías:", err);
+                    tablaHead.innerHTML = "";
+                    tablaBody.innerHTML = filaVacia(
+                        "No se pudieron cargar las ayudantías. Intenta recargar la página.",
+                        "error",
+                    );
+                    return;
+                }
+
+                try {
+                    const p = await getJson("/api/estudiante/postulaciones");
+                    (p.docente || []).forEach((x) =>
+                        yaPostulado.docente.add(x.codigo),
+                    );
+                    (p.administrativa || []).forEach((x) =>
+                        yaPostulado.administrativa.add(x.codigo),
+                    );
+                } catch (err) {
+                }
+
+                poblarSedes();
+                render();
+            }
+
+            document.querySelectorAll(".tab").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    document
+                        .querySelectorAll(".tab")
+                        .forEach((b) => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    tipoActual = btn.dataset.tipo;
+                    buscador.value = "";
+                    poblarSedes();
+                    render();
+                });
+            });
+            buscador.addEventListener("input", render);
+            filtroSede.addEventListener("change", render);
+
+            cargar();
+        </script>
+    </body>
+</html>
