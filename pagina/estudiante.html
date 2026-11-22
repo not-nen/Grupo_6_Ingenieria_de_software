@@ -202,6 +202,24 @@
                 transform: translateY(-1px);
             }
 
+            .btn-postular.deshabilitado,
+            .btn-postular.deshabilitado:hover {
+                background: #9ca3af;
+                cursor: not-allowed;
+                transform: none;
+                pointer-events: none;
+            }
+
+            .aviso-limite {
+                margin: 0 0 10px;
+                padding: 10px 14px;
+                border-radius: 8px;
+                border: 1px solid #fca5a5;
+                background: #fee2e2;
+                color: #991b1b;
+                font-weight: 600;
+            }
+
             .empty-state td {
                 padding: 20px 12px;
                 color: #6b7280;
@@ -325,6 +343,7 @@
                     <a class="btn-postular" href="/ayudantias-disponibles.html"
                         >Ver ayudantías disponibles</a>
                     </div>
+                <p id="avisoLimite" class="aviso-limite" hidden></p>
                     
                 <div class="row">
                     <div class="col-12">
@@ -551,18 +570,25 @@
             </div>
         </section>
 
+        <script src="/utils.js"></script>
         <script>
             const docenteBody = document.getElementById("docenteBody");
             const administrativaBody =
                 document.getElementById("administrativaBody");
+            const avisoLimite = document.getElementById("avisoLimite");
 
-            function escapeHtml(value) {
-                return String(value ?? "")
-                    .replaceAll("&", "&amp;")
-                    .replaceAll("<", "&lt;")
-                    .replaceAll(">", "&gt;")
-                    .replaceAll('"', "&quot;")
-                    .replaceAll("'", "&#39;");
+            function aplicarLimiteAyudantias(aviso) {
+                if (!aviso) return;
+                avisoLimite.textContent = aviso;
+                avisoLimite.hidden = false;
+                document
+                    .querySelectorAll('a.btn-postular[href^="/postula-"]')
+                    .forEach((boton) => {
+                        boton.removeAttribute("href");
+                        boton.setAttribute("aria-disabled", "true");
+                        boton.title = aviso;
+                        boton.classList.add("deshabilitado");
+                    });
             }
 
             function formatDate(value) {
@@ -701,6 +727,7 @@
 
                     renderDocenteRows(data.docente);
                     renderAdministrativaRows(data.administrativa);
+                    aplicarLimiteAyudantias(mensajeLimiteAyudantias(data));
                 } catch (err) {
                     const message =
                         err.name === "AbortError"

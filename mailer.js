@@ -34,4 +34,78 @@ async function enviarCorreoSeleccion({
   );
 }
 
-module.exports = { enviarCorreoSeleccion };
+/**
+ * Envía el correo de aceptación al estudiante elegido como ayudante.
+ */
+async function enviarCorreoAceptacion({
+  nombreEstudiante,
+  emailEstudiante,
+  asignatura,
+  nombreProfesor,
+}) {
+  await transporter.sendMail({
+    from: `"Sistema Ayudantías" <${process.env.SMTP_USER}>`,
+    to: emailEstudiante,
+    subject: `Aceptado/a como ayudante - ${asignatura}`,
+    text:
+      `Estimado/a ${nombreEstudiante}, fuiste aceptado/a como ayudante de la asignatura ` +
+      `${asignatura}, con el profesor ${nombreProfesor}. Pronto el profesor se contactará con usted ` +
+      `para coordinar el inicio de la ayudantía.`,
+  });
+
+  console.log(
+    `[CORREO ENVIADO] Para: ${emailEstudiante} | Asunto: Aceptado/a como ayudante - ${asignatura}`,
+  );
+}
+
+/**
+ * Envía el correo de rechazo; solo se usa cuando el profesor cierra el proceso de selección.
+ */
+async function enviarCorreoRechazo({
+  nombreEstudiante,
+  emailEstudiante,
+  asignatura,
+}) {
+  await transporter.sendMail({
+    from: `"Sistema Ayudantías" <${process.env.SMTP_USER}>`,
+    to: emailEstudiante,
+    subject: `Resultado de postulación - ${asignatura}`,
+    text:
+      `Estimado/a ${nombreEstudiante}, el proceso de selección de ayudantes para la asignatura ` +
+      `${asignatura} ha finalizado y en esta ocasión tu postulación no fue seleccionada. ` +
+      `Agradecemos tu interés y te invitamos a postular a futuras ayudantías.`,
+  });
+
+  console.log(
+    `[CORREO ENVIADO] Para: ${emailEstudiante} | Asunto: Resultado de postulación - ${asignatura}`,
+  );
+}
+
+/**
+ * Avisa a un ayudante aceptado que el proceso de selección del ramo terminó.
+ */
+async function enviarCorreoCierreAceptado({
+  nombreEstudiante,
+  emailEstudiante,
+  asignatura,
+}) {
+  await transporter.sendMail({
+    from: `"Sistema Ayudantías" <${process.env.SMTP_USER}>`,
+    to: emailEstudiante,
+    subject: `Proceso de selección finalizado - ${asignatura}`,
+    text:
+      `Estimado/a ${nombreEstudiante}, el proceso de selección de ayudantes para la asignatura ` +
+      `${asignatura} ha finalizado. Te confirmamos que quedaste seleccionado/a como ayudante.`,
+  });
+
+  console.log(
+    `[CORREO ENVIADO] Para: ${emailEstudiante} | Asunto: Proceso de selección finalizado - ${asignatura}`,
+  );
+}
+
+module.exports = {
+  enviarCorreoSeleccion,
+  enviarCorreoAceptacion,
+  enviarCorreoRechazo,
+  enviarCorreoCierreAceptado,
+};

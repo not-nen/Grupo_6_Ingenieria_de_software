@@ -237,7 +237,7 @@
             const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 
             function cargarUsuarioActual() {
-                const currentUser = getCurrentUser();
+                const currentUser = getCurrentUser("estudiante");
                 if (!currentUser) {
                     statusEl.textContent =
                         "No se pudo identificar al postulante. Vuelve a iniciar sesión.";
@@ -467,8 +467,24 @@
                 await cargarAyudantias();
             });
 
+            async function verificarLimiteAyudantias() {
+                try {
+                    const response = await fetch(
+                        "/api/estudiante/postulaciones",
+                        { credentials: "same-origin" },
+                    );
+                    if (!response.ok) return;
+                    const aviso = mensajeLimiteAyudantias(await response.json());
+                    if (!aviso) return;
+                    for (const control of form.elements) control.disabled = true;
+                    statusEl.textContent = aviso;
+                } catch (err) {
+                    console.error("verificarLimiteAyudantias:", err);
+                }
+            }
+
             cargarUsuarioActual();
-            cargarAyudantias();
+            cargarAyudantias().then(verificarLimiteAyudantias);
         </script>
     </body>
 </html>

@@ -2,9 +2,14 @@ version: "3.8"
 services:
   app:
     build: .
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      # Base online (Neon): `neon env pull` escribe ambas en .env (no se sube a git).
+      # Vacías = Postgres local. La directa (UNPOOLED) se usa para crear/migrar el esquema.
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DATABASE_URL_UNPOOLED=${DATABASE_URL_UNPOOLED:-}
       - DB_HOST=postgres_db
       - DB_PORT=5432
       - DB_USER=user

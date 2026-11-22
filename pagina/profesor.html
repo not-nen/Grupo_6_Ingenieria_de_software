@@ -36,6 +36,11 @@
                 color: #475569;
             }
 
+            .etapas {
+                font-size: 0.85rem;
+                color: #64748b;
+            }
+
             .filters {
                 display: grid;
                 grid-template-columns: 2fr 1fr auto;
@@ -61,6 +66,11 @@
 
             button:hover {
                 background: #25681b;
+            }
+
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
             }
 
             .group {
@@ -109,10 +119,105 @@
                 color: #166534;
             }
 
-            .action-btn {
+            /* ---- cierre de postulaciones ---- */
+            .cierre-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+                padding: 10px 12px;
+                border: 1px solid #dbe2e8;
+                border-radius: 10px;
+                background: #f8fafc;
+            }
+
+            .cierre-bar[hidden] {
+                display: none;
+            }
+
+            .cierre-info {
+                font-size: 0.9rem;
+                color: #475569;
+            }
+
+            /* ---- acciones por fila ---- */
+            .acciones {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .accion-btn {
                 width: auto;
                 padding: 6px 10px;
                 font-size: 0.82rem;
+                white-space: nowrap;
+            }
+
+            .accion-btn.secundario {
+                background: #64748b;
+            }
+
+            .accion-btn.secundario:hover {
+                background: #475569;
+            }
+
+            .btn-peligro {
+                background: #dc2626;
+            }
+
+            .btn-peligro:hover {
+                background: #b91c1c;
+            }
+
+            .sin-acciones {
+                color: #94a3b8;
+            }
+
+            /* ---- badges de estado ---- */
+            .badge-estado {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 700;
+                line-height: 1.2;
+                white-space: nowrap;
+                border: 1px solid #d1d5db;
+                background: #f3f4f6;
+                color: #374151;
+            }
+
+            .badge-estado.entrevista {
+                background: #fef3c7;
+                color: #92400e;
+                border-color: #fcd34d;
+            }
+
+            .badge-estado.aceptado {
+                background: #dcfce7;
+                color: #166534;
+                border-color: #86efac;
+            }
+
+            .badge-estado.rechazado {
+                background: #fee2e2;
+                color: #991b1b;
+                border-color: #fca5a5;
+            }
+
+            .badge-estado.cerrada {
+                background: #e2e8f0;
+                color: #334155;
+                border-color: #cbd5e1;
+            }
+
+            .badge-estado.limite {
+                margin-top: 4px;
+                background: #fee2e2;
+                color: #991b1b;
+                border-color: #fca5a5;
             }
 
             a {
@@ -176,6 +281,11 @@
                     Selecciona un ramo y revisa las postulaciones agrupadas por
                     tipo de ayudante.
                 </p>
+                <p class="etapas">
+                    Etapas: Pendiente → Seleccionado entrevista → Aceptado. Los
+                    rechazos se notifican al estudiante recién cuando cierras
+                    las postulaciones del ramo.
+                </p>
 
                 <form id="filtroForm" class="filters">
                     <select id="ramoSelect" required></select>
@@ -187,12 +297,25 @@
                     <button type="submit">Cargar postulaciones</button>
                 </form>
 
+                <div id="cierreBar" class="cierre-bar" hidden>
+                    <span id="cierreInfo" class="cierre-info"></span>
+                    <button
+                        type="button"
+                        id="cerrarBtn"
+                        class="accion-btn btn-peligro"
+                    >
+                        Cerrar postulaciones
+                    </button>
+                </div>
+
                 <div id="status" class="status"></div>
 
                 <div id="agrupadasContainer"></div>
 
-                <h2 class="section-title">Ayudantes seleccionados</h2>
-                <div id="seleccionadosContainer"></div>
+                <div id="seleccionadosSection">
+                    <h2 class="section-title">Ayudantes seleccionados</h2>
+                    <div id="seleccionadosContainer"></div>
+                </div>
 
                 <a class="btn-postular logout-btn" href="/">Cerrar Sesión</a>
             </section>
@@ -204,15 +327,63 @@
             const ramoSelect = document.getElementById("ramoSelect");
             const orderSelect = document.getElementById("orderSelect");
             const statusEl = document.getElementById("status");
+            const cierreBar = document.getElementById("cierreBar");
+            const cierreInfo = document.getElementById("cierreInfo");
+            const cerrarBtn = document.getElementById("cerrarBtn");
             const agrupadasContainer =
                 document.getElementById("agrupadasContainer");
             const seleccionadosContainer = document.getElementById(
                 "seleccionadosContainer",
             );
+            const seleccionadosSection = document.getElementById(
+                "seleccionadosSection",
+            );
+
+            let ayudantiaActual = null;
+            let ultimaSolicitud = 0;
+
+            const CLASE_BADGE = {
+                "Seleccionado entrevista": "entrevista",
+                Aceptado: "aceptado",
+                Rechazado: "rechazado",
+                Cerrada: "cerrada",
+            };
+
+            const ACCIONES_POR_ESTADO = {
+                Pendiente: [
+                    { accion: "seleccionar", texto: "Seleccionar entrevista" },
+                    { accion: "rechazar", texto: "Rechazar", clase: "btn-peligro" },
+                ],
+                "Seleccionado entrevista": [
+                    { accion: "aceptar", texto: "Aceptar ayudante" },
+                    {
+                        accion: "deseleccionar",
+                        texto: "Deseleccionar entrevista",
+                        clase: "secundario",
+                    },
+                    { accion: "rechazar", texto: "Rechazar", clase: "btn-peligro" },
+                ],
+                Rechazado: [
+                    {
+                        accion: "revertir-rechazo",
+                        texto: "Revertir rechazo",
+                        clase: "secundario",
+                    },
+                ],
+            };
+
+            function mostrarStatus(texto, ok = false) {
+                statusEl.textContent = texto || "";
+                statusEl.classList.toggle("ok", ok);
+            }
 
             async function cargarRamos() {
                 const response = await fetch("/api/profesor/ramos");
                 const data = await response.json();
+                if (!response.ok) {
+                    mostrarStatus(data.error || "No se pudieron cargar tus ramos");
+                    return;
+                }
 
                 const opciones = [
                     { value: "todas-docentes:0", label: "Ayudantía docente" },
@@ -220,33 +391,42 @@
                         value: "todas-administrativas:0",
                         label: "Ayudantía administrativa",
                     },
-                    { type: "divider" },
                 ];
 
-                data.forEach((item) => {
-                    const value = `${item.fuente}:${item.ayudantia_id}`;
+                const especificas = data.map((item) => {
                     const codigo = item.codigo ? `${item.codigo} - ` : "";
-                    const label =
+                    const base =
                         item.fuente === "administrativa"
                             ? `Postulados Ayudantía administrativa (${codigo}${item.ramo})`
                             : `${codigo}${item.ramo} (${item.tipo_ayudantia})`;
-                    opciones.push({ value, label, type: "option" });
+                    const cerrada =
+                        item.estado !== "Disponible" ? " — Cerrada" : "";
+                    return {
+                        value: `${item.fuente}:${item.ayudantia_id}`,
+                        label: `${base}${cerrada}`,
+                    };
                 });
 
-                ramoSelect.innerHTML = opciones
-                    .map((opt) => {
-                        if (opt.type === "divider") {
-                            return '<optgroup label="Ramos específicos"></optgroup>';
-                        }
-                        return `<option value="${opt.value}">${escapeHtml(opt.label)}</option>`;
-                    })
-                    .join("");
+                const renderOpcion = (opt) =>
+                    `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
+
+                ramoSelect.innerHTML =
+                    opciones.map(renderOpcion).join("") +
+                    (especificas.length
+                        ? `<optgroup label="Ramos específicos">${especificas.map(renderOpcion).join("")}</optgroup>`
+                        : "");
+
+                if (data.length === 0) {
+                    mostrarStatus(
+                        "Aún no tienes ramos asignados. El administrador debe asignártelos para que puedas revisar postulaciones.",
+                    );
+                }
             }
 
             function celdaDocumentos(item) {
                 const archivos = Array.isArray(item.archivos) ? item.archivos : [];
                 if (archivos.length === 0) {
-                    return escapeHtml(item.documentos || "Sin archivos adjuntos");
+                    return "Sin archivos adjuntos";
                 }
                 return archivos
                     .map(
@@ -256,13 +436,50 @@
                     .join("<br>");
             }
 
-            function renderTabla(
-                rows,
-                includeAction = false,
-                actionText = "Seleccionar entrevista",
-                actionClass = "action-btn",
-                showAsignatura = false,
-            ) {
+            function badgeEstado(estado) {
+                const clase = CLASE_BADGE[estado] || "";
+                return `<span class="badge-estado ${clase}">${escapeHtml(estado)}</span>`;
+            }
+
+            function alcanzoLimiteAyudantias(item) {
+                const aceptadas = Number(item.ayudantias_aceptadas_estudiante);
+                const maximo = Number(item.max_ayudantias_aceptadas);
+                return (
+                    item.estado !== "Aceptado" &&
+                    Number.isFinite(aceptadas) &&
+                    Number.isFinite(maximo) &&
+                    aceptadas >= maximo
+                );
+            }
+
+            function celdaEstudiante(item) {
+                const aviso = alcanzoLimiteAyudantias(item)
+                    ? `<br><span class="badge-estado limite">Ya es ayudante en ${escapeHtml(item.ayudantias_aceptadas_estudiante)} ramos</span>`
+                    : "";
+                return `${escapeHtml(item.nombre_estudiante)}${aviso}`;
+            }
+
+            function celdaAcciones(item) {
+                const acciones =
+                    item.estado_ayudantia === "Disponible"
+                        ? ACCIONES_POR_ESTADO[item.estado] || []
+                        : [];
+                if (acciones.length === 0) {
+                    return '<span class="sin-acciones">—</span>';
+                }
+                const bloqueaAceptar = alcanzoLimiteAyudantias(item);
+                return `<div class="acciones">${acciones
+                    .map((a) => {
+                        const bloqueado = a.accion === "aceptar" && bloqueaAceptar;
+                        const atributosBloqueo = bloqueado
+                            ? ` disabled title="Ya es ayudante en el máximo de ${escapeHtml(item.max_ayudantias_aceptadas)} ramos"`
+                            : "";
+                        return `<button type="button" class="accion-btn ${a.clase || ""}" data-accion="${escapeHtml(a.accion)}" data-fuente="${escapeHtml(item.fuente)}" data-id="${escapeHtml(item.postulacion_id)}" data-nombre="${escapeHtml(item.nombre_estudiante)}"${atributosBloqueo}>${escapeHtml(a.texto)}</button>`;
+                    })
+                    .join("")}</div>`;
+            }
+
+            function renderTabla(rows, showAsignatura = false) {
                 if (!rows || rows.length === 0) {
                     return '<p style="margin: 10px 0; color: #64748b;">Sin registros.</p>';
                 }
@@ -278,7 +495,7 @@
                 <th>Documentos</th>
                 <th>Estado</th>
                 <th>Fecha Estado</th>
-                ${includeAction ? "<th>Acción</th>" : ""}
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -286,14 +503,14 @@
                   .map(
                       (item) => `
                 <tr>
-                  ${showAsignatura ? `<td>${escapeHtml(item.asignatura || item.glosa || "-")}</td>` : ""}
-                  <td>${escapeHtml(item.nombre_estudiante)}</td>
+                  ${showAsignatura ? `<td>${escapeHtml(item.ramo || "-")}</td>` : ""}
+                  <td>${celdaEstudiante(item)}</td>
                   <td>${escapeHtml(item.email_estudiante)}</td>
                   <td>${escapeHtml(item.motivacion)}</td>
                   <td>${celdaDocumentos(item)}</td>
-                  <td>${escapeHtml(item.estado)}</td>
+                  <td>${badgeEstado(item.estado)}</td>
                   <td>${escapeHtml(new Date(item.fecha_estado).toLocaleString())}</td>
-                  ${includeAction ? `<td><button class="${escapeHtml(actionClass)}" data-fuente="${escapeHtml(item.fuente)}" data-id="${escapeHtml(item.postulacion_id)}">${escapeHtml(actionText)}</button></td>` : ""}
+                  <td>${celdaAcciones(item)}</td>
                 </tr>
               `,
                   )
@@ -303,45 +520,45 @@
         `;
             }
 
+            function mensajeVacio(texto) {
+                return `<p style="color:#64748b;">${escapeHtml(texto)}</p>`;
+            }
+
             function renderAgrupadas(agrupados, isGeneralFilter = false) {
                 if (!agrupados || Object.keys(agrupados).length === 0) {
-                    agrupadasContainer.innerHTML =
-                        '<p style="color:#64748b;">No hay postulantes para este filtro.</p>';
+                    agrupadasContainer.innerHTML = mensajeVacio(
+                        "No hay postulaciones pendientes de revisión.",
+                    );
                     return;
                 }
 
-                const sections = [];
-                Object.entries(agrupados).forEach(([key, rows]) => {
-                    sections.push({ title: key, rows });
-                });
-
-                agrupadasContainer.innerHTML = sections
+                agrupadasContainer.innerHTML = Object.entries(agrupados)
                     .map(
-                        (s) => `
+                        ([titulo, rows]) => `
             <section class="group">
-              <h3>${escapeHtml(s.title)}</h3>
-              <div style="padding: 10px;">${renderTabla(s.rows, true, "Seleccionar entrevista", "action-btn", isGeneralFilter)}</div>
+              <h3>${escapeHtml(titulo)}</h3>
+              <div style="padding: 10px;">${renderTabla(rows, isGeneralFilter)}</div>
             </section>
           `,
                     )
                     .join("");
             }
 
-            function renderSeleccionados(rows, showAsignatura = false) {
-                // Mostrar botón para desseleccionar en la lista de seleccionados
-                seleccionadosContainer.innerHTML = renderTabla(
-                    rows,
-                    true,
-                    "Deseleccionar entrevista",
-                    "deselect-btn",
-                    showAsignatura,
-                );
+            function renderCierre(ayudantia) {
+                ayudantiaActual = ayudantia || null;
+                if (!ayudantia) {
+                    cierreBar.hidden = true;
+                    return;
+                }
+                cierreBar.hidden = false;
+                const abierta = ayudantia.estado === "Disponible";
+                cierreInfo.innerHTML = abierta
+                    ? "Postulaciones abiertas. Al cerrarlas, quienes no estén aceptados quedarán rechazados y se les enviará un correo."
+                    : `${badgeEstado("Cerrada")} El proceso de selección de este ramo terminó.`;
+                cerrarBtn.hidden = !abierta;
             }
 
             async function cargarPostulaciones() {
-                statusEl.textContent = "";
-                statusEl.classList.remove("ok");
-
                 const value = ramoSelect.value;
                 if (!value) return;
 
@@ -357,120 +574,117 @@
                     url = `/api/profesor/postulaciones?fuente=${encodeURIComponent(tipoFiltro)}&ayudantiaId=${encodeURIComponent(ayudantiaId)}&orderBy=${encodeURIComponent(orderBy)}`;
                 }
 
+                const solicitud = ++ultimaSolicitud;
                 const response = await fetch(url);
                 const data = await response.json();
+                if (solicitud !== ultimaSolicitud) return;
                 if (!response.ok) {
-                    statusEl.textContent =
-                        data.error || "No se pudieron cargar postulaciones";
+                    mostrarStatus(
+                        data.error || "No se pudieron cargar postulaciones",
+                    );
                     agrupadasContainer.innerHTML = "";
                     seleccionadosContainer.innerHTML = "";
+                    seleccionadosSection.hidden = true;
+                    renderCierre(null);
                     return;
                 }
 
                 const isGeneralFilter =
                     tipoFiltro === "todas-docentes" ||
                     tipoFiltro === "todas-administrativas";
+                renderCierre(data.ayudantia);
+
+                const sinPostulaciones =
+                    Object.keys(data.agrupados || {}).length === 0 &&
+                    (data.seleccionados || []).length === 0;
+                seleccionadosSection.hidden = sinPostulaciones;
+                if (sinPostulaciones) {
+                    agrupadasContainer.innerHTML = mensajeVacio(
+                        isGeneralFilter
+                            ? "Aún no hay postulaciones en tus ramos de este tipo."
+                            : "Este ramo aún no tiene postulaciones.",
+                    );
+                    seleccionadosContainer.innerHTML = "";
+                    return;
+                }
+
                 renderAgrupadas(data.agrupados, isGeneralFilter);
-                renderSeleccionados(data.seleccionados, isGeneralFilter);
+                seleccionadosContainer.innerHTML = renderTabla(
+                    data.seleccionados,
+                    isGeneralFilter,
+                );
+            }
+
+            async function enviarAccion(url, body) {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    mostrarStatus(data.error || "No se pudo completar la acción");
+                    return false;
+                }
+                mostrarStatus(data.message, true);
+                return true;
             }
 
             document.addEventListener("click", async (event) => {
-                // Seleccionar entrevista
-                const selBtn = event.target.closest(".action-btn");
-                if (selBtn) {
-                    const fuente = selBtn.dataset.fuente;
-                    const postulacionId = selBtn.dataset.id;
+                const btn = event.target.closest("[data-accion]");
+                if (!btn || btn.disabled) return;
 
-                    const response = await fetch(
-                        "/api/profesor/postulaciones/seleccionar",
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ fuente, postulacionId }),
-                        },
-                    );
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        statusEl.textContent =
-                            data.error || "No se pudo seleccionar";
-                        statusEl.classList.remove("ok");
-                        return;
-                    }
-
-                    statusEl.textContent = data.message;
-                    statusEl.classList.add("ok");
-                    await cargarPostulaciones();
+                const { accion, fuente, id, nombre } = btn.dataset;
+                if (
+                    accion === "aceptar" &&
+                    !confirm(
+                        `¿Aceptar a ${nombre} como ayudante? Se le enviará un correo de confirmación.`,
+                    )
+                ) {
                     return;
                 }
 
-                // Deseleccionar entrevista
-                const deselBtn = event.target.closest(".deselect-btn");
-                if (deselBtn) {
-                    const fuente = deselBtn.dataset.fuente;
-                    const postulacionId = deselBtn.dataset.id;
-                    console.log("Deseleccionar clicked", {
-                        fuente,
-                        postulacionId,
-                    });
-
-                    try {
-                        const response = await fetch(
-                            "/api/profesor/postulaciones/deseleccionar",
-                            {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ fuente, postulacionId }),
-                            },
-                        );
-                        const data = await response.json();
-                        console.log(
-                            "Deseleccionar response",
-                            response.status,
-                            data,
-                        );
-
-                        if (!response.ok) {
-                            statusEl.textContent =
-                                data.error || "No se pudo desseleccionar";
-                            statusEl.classList.remove("ok");
-                            return;
-                        }
-
-                        statusEl.textContent =
-                            data.message || "Selección revertida";
-                        statusEl.classList.add("ok");
-
-                        // Eliminar visualmente la fila de seleccionados inmediatamente
-                        deselBtn.closest("tr")?.remove();
-
-                        // Verificar si la tabla de seleccionados quedó vacía
-                        const tbody =
-                            seleccionadosContainer.querySelector("tbody");
-                        if (tbody && tbody.rows.length === 0) {
-                            seleccionadosContainer.innerHTML =
-                                '<p style="margin: 10px 0; color: #64748b;">Sin registros.</p>';
-                        }
-
-                        // Recargar la lista de postulantes después de 500ms para que vea la fila reaparecer
-                        setTimeout(() => {
-                            cargarPostulaciones();
-                        }, 500);
-                    } catch (err) {
-                        console.error("Error en deseleccionar:", err);
-                        statusEl.textContent = "Error al desseleccionar";
-                        statusEl.classList.remove("ok");
-                    }
-
-                    return;
-                }
+                btn.disabled = true;
+                await enviarAccion(`/api/profesor/postulaciones/${accion}`, {
+                    fuente,
+                    postulacionId: id,
+                });
+                await cargarPostulaciones();
             });
 
-            ramoSelect.addEventListener("change", cargarPostulaciones);
+            cerrarBtn.addEventListener("click", async () => {
+                if (!ayudantiaActual) return;
+                if (
+                    !confirm(
+                        "¿Cerrar las postulaciones de este ramo? Los postulantes que no estén aceptados quedarán rechazados y se les enviará un correo. Esta acción no se puede deshacer.",
+                    )
+                ) {
+                    return;
+                }
+
+                cerrarBtn.disabled = true;
+                const ok = await enviarAccion("/api/profesor/ayudantias/cerrar", {
+                    fuente: ayudantiaActual.fuente,
+                    ayudantiaId: ayudantiaActual.id,
+                });
+                cerrarBtn.disabled = false;
+                if (!ok) return;
+
+                const seleccionado = ramoSelect.value;
+                await cargarRamos();
+                ramoSelect.value = seleccionado;
+                await cargarPostulaciones();
+            });
+
+            ramoSelect.addEventListener("change", () => {
+                mostrarStatus("");
+                cargarPostulaciones();
+            });
             orderSelect.addEventListener("change", cargarPostulaciones);
 
             filtroForm.addEventListener("submit", async (event) => {
                 event.preventDefault();
+                mostrarStatus("");
                 await cargarPostulaciones();
             });
 

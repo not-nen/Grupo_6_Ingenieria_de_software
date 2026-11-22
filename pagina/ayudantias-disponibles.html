@@ -299,6 +299,7 @@
 
             const datos = { docente: [], administrativa: [] };
             const yaPostulado = { docente: new Set(), administrativa: new Set() };
+            let avisoLimite = null;
             let tipoActual = "docente";
 
             const tablaHead = document.getElementById("tablaHead");
@@ -391,7 +392,9 @@
                             .join("");
                         const accion = yaPostulado[tipoActual].has(i.codigo)
                             ? '<span class="badge">Ya postulaste</span>'
-                            : `<a class="btn" href="${URL_POSTULAR[tipoActual]}">Postular</a>`;
+                            : avisoLimite
+                              ? `<span class="badge" title="${escapeHtml(avisoLimite)}">Máximo de ayudantías alcanzado</span>`
+                              : `<a class="btn" href="${URL_POSTULAR[tipoActual]}">Postular</a>`;
                         return `<tr>${celdas}<td data-label="Acción">${accion}</td></tr>`;
                     })
                     .join("");
@@ -430,6 +433,7 @@
                     (p.administrativa || []).forEach((x) =>
                         yaPostulado.administrativa.add(x.codigo),
                     );
+                    avisoLimite = mensajeLimiteAyudantias(p);
                 } catch (err) {
                 }
 

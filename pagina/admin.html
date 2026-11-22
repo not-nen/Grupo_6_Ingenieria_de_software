@@ -29,25 +29,27 @@
                 --accent-red-hover: #b91c1c;
 
                 --w-codigo: 9%;
-                --w-asignatura: 13%;
+                --w-asignatura: 14%;
                 --w-paralelo: 6%;
-                --w-sede: 11%;
-                --w-depto: 13%;
-                --w-inicio: 8%;
-                --w-termino: 8%;
+                --w-sede: 10%;
+                --w-depto: 11%;
+                --w-inicio: 7%;
+                --w-termino: 7%;
                 --w-horas: 5%;
-                --w-estado: 9%;
+                --w-estado: 8%;
+                --w-profesor: 15%;
                 --w-acciones: 8%;
 
-                --w-adm-codigo: 9%;
-                --w-adm-glosa: 16%;
-                --w-adm-sede: 11%;
-                --w-adm-depto: 13%;
-                --w-adm-tipo: 10%;
+                --w-adm-codigo: 8%;
+                --w-adm-glosa: 14%;
+                --w-adm-sede: 9%;
+                --w-adm-depto: 11%;
+                --w-adm-tipo: 9%;
                 --w-adm-inicio: 7%;
                 --w-adm-termino: 7%;
                 --w-adm-horas: 5%;
-                --w-adm-estado: 8%;
+                --w-adm-estado: 7%;
+                --w-adm-profesor: 15%;
                 --w-adm-acciones: 8%;
             }
 
@@ -121,8 +123,8 @@
                 border-collapse: collapse;
             }
 
-            .tabla-admin th,
-            .tabla-admin td {
+            .table.tabla-admin th,
+            .table.tabla-admin td {
                 white-space: normal;
                 word-break: break-word;
                 overflow-wrap: anywhere;
@@ -185,6 +187,9 @@
             .tbl-docente .col-estado {
                 width: var(--w-estado);
             }
+            .tbl-docente .col-profesor {
+                width: var(--w-profesor);
+            }
             .tbl-docente .col-acciones {
                 width: var(--w-acciones);
             }
@@ -217,8 +222,94 @@
             .tbl-adm .col-adm-estado {
                 width: var(--w-adm-estado);
             }
+            .tbl-adm .col-adm-profesor {
+                width: var(--w-adm-profesor);
+            }
             .tbl-adm .col-adm-acciones {
                 width: var(--w-adm-acciones);
+            }
+
+            /* ---- selector de profesor por fila ---- */
+            .select-profesor {
+                width: 100%;
+                font-size: 11px;
+                padding: 3px 4px;
+                border: 1px solid #c9d2d9;
+                border-radius: 6px;
+                background: #fff;
+                color: #1f2937;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .select-profesor:focus {
+                border-color: var(--dashboard-accent);
+                outline: none;
+            }
+
+            .select-profesor.guardado {
+                border-color: #86efac;
+                box-shadow: 0 0 0 2px #dcfce7;
+            }
+
+            /* ---- ramos por profesor ---- */
+            .tbl-ramos .col-rp-tipo {
+                width: 14%;
+            }
+            .tbl-ramos .col-rp-codigo {
+                width: 18%;
+            }
+            .tbl-ramos .col-rp-ramo {
+                width: 38%;
+            }
+            .tbl-ramos .col-rp-estado {
+                width: 14%;
+            }
+            .tbl-ramos .col-rp-accion {
+                width: 16%;
+            }
+
+            .rp-resultados-lista {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                border: 1px solid #d7dee3;
+                border-radius: 8px;
+                background: #fff;
+                max-height: 280px;
+                overflow-y: auto;
+            }
+
+            .rp-resultados-lista li {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 7px 12px;
+                font-size: 12px;
+                color: #1f2937;
+                border-bottom: 1px solid #eef1f4;
+            }
+
+            .rp-resultados-lista li:last-child {
+                border-bottom: none;
+            }
+
+            .rp-resultados-lista .rp-detalle {
+                color: #6b7280;
+                font-size: 11px;
+            }
+
+            .rp-sin-resultados {
+                font-size: 12px;
+                color: #6b7280;
+                margin: 0;
+            }
+
+            .btn-mini {
+                padding: 4px 10px;
+                font-size: 11px;
+                border-radius: 6px;
+                flex: 0 0 auto;
             }
 
             /* ---- buttons ---- */
@@ -383,8 +474,8 @@
             }
 
             @media (max-width: 1200px) {
-                .tabla-admin th,
-                .tabla-admin td {
+                .table.tabla-admin th,
+                .table.tabla-admin td {
                     font-size: 11px;
                     padding: 5px 4px;
                 }
@@ -400,16 +491,102 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="accordion" id="accordionAdmin">
+                            <!-- ===== SECCIÓN 0: RAMOS POR PROFESOR ===== -->
+                            <div class="card mb-3">
+                                <div class="card-header" id="headingRamosProfesor">
+                                    <h2 class="mb-0">
+                                        <button
+                                            class="btn btn-link btn-block text-left accordion-btn collapsed"
+                                            type="button"
+                                            data-toggle="collapse"
+                                            data-target="#collapseRamosProfesor"
+                                            aria-expanded="false"
+                                            aria-controls="collapseRamosProfesor"
+                                        >
+                                            Ramos por Profesor
+                                        </button>
+                                    </h2>
+                                </div>
+
+                                <div
+                                    id="collapseRamosProfesor"
+                                    class="collapse"
+                                    aria-labelledby="headingRamosProfesor"
+                                >
+                                    <div class="card-body">
+                                        <div class="form-crear">
+                                            <div class="row">
+                                                <div class="col-md-4 col-12">
+                                                    <div class="form-group">
+                                                        <label for="rp-profesor">Profesor</label>
+                                                        <select id="rp-profesor" class="form-control">
+                                                            <option value="">Cargando profesores...</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8 col-12">
+                                                    <div class="form-group">
+                                                        <label for="rp-buscar">Agregar ramo</label>
+                                                        <input
+                                                            id="rp-buscar"
+                                                            type="search"
+                                                            class="form-control"
+                                                            placeholder="Busca por código o nombre del ramo (mínimo 2 letras)"
+                                                            autocomplete="off"
+                                                            disabled
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="rp-resultados"></div>
+                                            <div id="msgRamosProfesor" class="msg-feedback"></div>
+                                        </div>
+
+                                        <p class="section-subtitle" id="rp-titulo">
+                                            Ramos asignados
+                                        </p>
+                                        <div class="table-responsive-wrap">
+                                            <table class="table tabla-admin tbl-ramos">
+                                                <colgroup>
+                                                    <col class="col-rp-tipo" />
+                                                    <col class="col-rp-codigo" />
+                                                    <col class="col-rp-ramo" />
+                                                    <col class="col-rp-estado" />
+                                                    <col class="col-rp-accion" />
+                                                </colgroup>
+                                                <thead class="thead-primary">
+                                                    <tr>
+                                                        <th>Tipo</th>
+                                                        <th>Código</th>
+                                                        <th>Ramo</th>
+                                                        <th>Estado</th>
+                                                        <th>Acción</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tablaRamosProfesorBody">
+                                                    <tr class="empty-state">
+                                                        <td colspan="5">
+                                                            Selecciona un profesor para ver sus ramos.
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- /card ramos por profesor -->
+
                             <!-- ===== SECCIÓN 1: DOCENTES ===== -->
                             <div class="card">
                                 <div class="card-header" id="headingDocente">
                                     <h2 class="mb-0">
                                         <button
-                                            class="btn btn-link btn-block text-left accordion-btn"
+                                            class="btn btn-link btn-block text-left accordion-btn collapsed"
                                             type="button"
                                             data-toggle="collapse"
                                             data-target="#collapseDocente"
-                                            aria-expanded="true"
+                                            aria-expanded="false"
                                             aria-controls="collapseDocente"
                                         >
                                             Ayudantías Docentes
@@ -419,7 +596,7 @@
 
                                 <div
                                     id="collapseDocente"
-                                    class="collapse show"
+                                    class="collapse"
                                     aria-labelledby="headingDocente"
                                 >
                                     <div class="card-body">
@@ -674,6 +851,7 @@
                                                     <col class="col-termino" />
                                                     <col class="col-horas" />
                                                     <col class="col-estado" />
+                                                    <col class="col-profesor" />
                                                     <col class="col-acciones" />
                                                 </colgroup>
                                                 <thead class="thead-primary">
@@ -687,12 +865,13 @@
                                                         <th>Término</th>
                                                         <th>Horas</th>
                                                         <th>Estado</th>
+                                                        <th>Profesor</th>
                                                         <th>Acciones</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="tablaDocenteBody">
                                                     <tr class="empty-state">
-                                                        <td colspan="10">
+                                                        <td colspan="11">
                                                             Cargando
                                                             ayudantías...
                                                         </td>
@@ -939,6 +1118,9 @@
                                                         class="col-adm-estado"
                                                     />
                                                     <col
+                                                        class="col-adm-profesor"
+                                                    />
+                                                    <col
                                                         class="col-adm-acciones"
                                                     />
                                                 </colgroup>
@@ -953,6 +1135,7 @@
                                                         <th>Término</th>
                                                         <th>Horas</th>
                                                         <th>Estado</th>
+                                                        <th>Profesor</th>
                                                         <th>Acciones</th>
                                                     </tr>
                                                 </thead>
@@ -960,7 +1143,7 @@
                                                     id="tablaAdministrativaBody"
                                                 >
                                                     <tr class="empty-state">
-                                                        <td colspan="10">
+                                                        <td colspan="11">
                                                             Cargando
                                                             ayudantías...
                                                         </td>
@@ -1259,14 +1442,286 @@
                 actualizarCamposDesdeSeleccion();
             });
 
+            // ── Asignación de profesores ──────────────────────────────────────────────
+
+            const COLUMNAS_TABLA = 11;
+            const MAX_RESULTADOS_RAMOS = 15;
+            let profesores = [];
+            let ayudantiasAdministrativas = [];
+
+            const selectRpProfesor = document.getElementById("rp-profesor");
+            const inputRpBuscar = document.getElementById("rp-buscar");
+            const rpResultados = document.getElementById("rp-resultados");
+            const rpTitulo = document.getElementById("rp-titulo");
+            const tablaRamosProfesorBody = document.getElementById(
+                "tablaRamosProfesorBody",
+            );
+            const msgRamosProfesor =
+                document.getElementById("msgRamosProfesor");
+
+            async function cargarProfesores() {
+                try {
+                    const res = await fetch("/api/admin/profesores", {
+                        credentials: "same-origin",
+                    });
+                    const data = await parseJsonResponse(res);
+                    if (!res.ok)
+                        throw new Error(
+                            data.error || "Error al cargar profesores",
+                        );
+                    profesores = Array.isArray(data) ? data : [];
+                } catch (err) {
+                    profesores = [];
+                    showMsg(msgRamosProfesor, "error", err.message);
+                    console.error("cargarProfesores:", err);
+                }
+            }
+
+            function todasLasAyudantias() {
+                return [
+                    ...ayudantiasDocenteActivas.map((item) => ({
+                        fuente: "docente",
+                        tipo: "Docente",
+                        nombre: item.asignatura,
+                        item,
+                    })),
+                    ...ayudantiasAdministrativas.map((item) => ({
+                        fuente: "administrativa",
+                        tipo: "Administrativa",
+                        nombre: item.glosa,
+                        item,
+                    })),
+                ];
+            }
+
+            function profesorSeleccionado() {
+                return (
+                    profesores.find(
+                        (p) => String(p.id) === selectRpProfesor.value,
+                    ) || null
+                );
+            }
+
+            function renderSelectorRamosProfesor() {
+                const actual = selectRpProfesor.value;
+                if (profesores.length === 0) {
+                    selectRpProfesor.innerHTML =
+                        '<option value="">No hay profesores registrados</option>';
+                    return;
+                }
+                const ayudantias = todasLasAyudantias();
+                selectRpProfesor.innerHTML =
+                    '<option value="">Selecciona un profesor...</option>' +
+                    profesores
+                        .map((p) => {
+                            const total = ayudantias.filter(
+                                (a) => a.item.profesor_id === p.id,
+                            ).length;
+                            return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nombre)} (${escapeHtml(p.email)}) — ${total} ramo(s)</option>`;
+                        })
+                        .join("");
+                selectRpProfesor.value = actual;
+            }
+
+            function renderPanelRamosProfesor() {
+                renderSelectorRamosProfesor();
+                const profesor = profesorSeleccionado();
+                inputRpBuscar.disabled = !profesor;
+                if (!profesor) {
+                    rpTitulo.textContent = "Ramos asignados";
+                    tablaRamosProfesorBody.innerHTML = renderEmptyRow(
+                        "Selecciona un profesor para ver sus ramos.",
+                        5,
+                    );
+                    rpResultados.innerHTML = "";
+                    return;
+                }
+
+                const asignados = todasLasAyudantias()
+                    .filter((a) => a.item.profesor_id === profesor.id)
+                    .sort((a, b) => a.item.codigo.localeCompare(b.item.codigo));
+                rpTitulo.textContent = `Ramos asignados a ${profesor.nombre} (${asignados.length})`;
+                tablaRamosProfesorBody.innerHTML = asignados.length
+                    ? asignados
+                          .map(
+                              (a) => `
+          <tr>
+            <td>${a.tipo}</td>
+            <td>${escapeHtml(a.item.codigo)}</td>
+            <td>${escapeHtml(a.nombre)}</td>
+            <td>${renderEstadoBadge(a.item.estado)}</td>
+            <td>
+              <button type="button" class="btn-eliminar" data-rp-accion="quitar"
+                data-fuente="${a.fuente}" data-id="${escapeHtml(a.item.id)}">Quitar</button>
+            </td>
+          </tr>`,
+                          )
+                          .join("")
+                    : renderEmptyRow(
+                          "Este profesor aún no tiene ramos asignados. Búscalos arriba para agregarlos.",
+                          5,
+                      );
+                renderResultadosBusqueda();
+            }
+
+            function renderResultadosBusqueda() {
+                const profesor = profesorSeleccionado();
+                const texto = inputRpBuscar.value.trim().toLowerCase();
+                if (!profesor || texto.length < 2) {
+                    rpResultados.innerHTML = "";
+                    return;
+                }
+                const coincidencias = todasLasAyudantias().filter(
+                    (a) =>
+                        a.item.profesor_id !== profesor.id &&
+                        (a.item.codigo.toLowerCase().includes(texto) ||
+                            a.nombre.toLowerCase().includes(texto)),
+                );
+                if (coincidencias.length === 0) {
+                    rpResultados.innerHTML =
+                        '<p class="rp-sin-resultados">Ningún ramo coincide con la búsqueda (o ya están todos asignados a este profesor).</p>';
+                    return;
+                }
+                const filas = coincidencias
+                    .slice(0, MAX_RESULTADOS_RAMOS)
+                    .map((a) => {
+                        const otro = profesores.find(
+                            (p) => p.id === a.item.profesor_id,
+                        );
+                        const detalle = [
+                            a.tipo,
+                            a.item.estado,
+                            otro ? `asignado a ${otro.nombre}` : "sin profesor",
+                        ].join(" · ");
+                        return `<li>
+              <span><strong>${escapeHtml(a.item.codigo)}</strong> — ${escapeHtml(a.nombre)}
+                <span class="rp-detalle">(${escapeHtml(detalle)})</span></span>
+              <button type="button" class="btn-admin btn-mini" data-rp-accion="asignar"
+                data-fuente="${a.fuente}" data-id="${escapeHtml(a.item.id)}">${otro ? "Reasignar" : "Asignar"}</button>
+            </li>`;
+                    })
+                    .join("");
+                const resto =
+                    coincidencias.length > MAX_RESULTADOS_RAMOS
+                        ? `<p class="rp-sin-resultados mt-1">Mostrando ${MAX_RESULTADOS_RAMOS} de ${coincidencias.length} coincidencias; escribe más para acotar.</p>`
+                        : "";
+                rpResultados.innerHTML = `<ul class="rp-resultados-lista">${filas}</ul>${resto}`;
+            }
+
+            async function guardarProfesorAyudantia(fuente, id, profesorId) {
+                const res = await fetch(
+                    `/api/admin/ayudantias/${fuente}/${id}/profesor`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ profesorId }),
+                    },
+                );
+                const data = await parseJsonResponse(res);
+                if (!res.ok)
+                    throw new Error(
+                        data.error || "No se pudo asignar el profesor",
+                    );
+
+                const lista =
+                    fuente === "docente"
+                        ? ayudantiasDocenteActivas
+                        : ayudantiasAdministrativas;
+                const item = lista.find((a) => String(a.id) === String(id));
+                if (item) item.profesor_id = profesorId;
+                const select = document.querySelector(
+                    `.select-profesor[data-fuente="${fuente}"][data-id="${id}"]`,
+                );
+                if (select) {
+                    select.value = profesorId ?? "";
+                    select.dataset.actual = select.value;
+                }
+                renderPanelRamosProfesor();
+                return item;
+            }
+
+            selectRpProfesor.addEventListener("change", () => {
+                inputRpBuscar.value = "";
+                renderPanelRamosProfesor();
+            });
+
+            inputRpBuscar.addEventListener("input", renderResultadosBusqueda);
+
+            document.addEventListener("click", async (event) => {
+                const boton = event.target.closest("[data-rp-accion]");
+                if (!boton) return;
+                const profesor = profesorSeleccionado();
+                if (!profesor) return;
+
+                const { rpAccion, fuente, id } = boton.dataset;
+                const asignar = rpAccion === "asignar";
+                boton.disabled = true;
+                try {
+                    const item = await guardarProfesorAyudantia(
+                        fuente,
+                        id,
+                        asignar ? profesor.id : null,
+                    );
+                    showMsg(
+                        msgRamosProfesor,
+                        "success",
+                        asignar
+                            ? `${item?.codigo ?? "Ramo"} asignado a ${profesor.nombre}.`
+                            : `${item?.codigo ?? "Ramo"} quitado de ${profesor.nombre}.`,
+                    );
+                } catch (err) {
+                    boton.disabled = false;
+                    showMsg(msgRamosProfesor, "error", err.message);
+                    console.error("ramosProfesor:", err);
+                }
+            });
+
+            function renderSelectProfesor(fuente, item) {
+                const opciones = profesores
+                    .map(
+                        (p) =>
+                            `<option value="${escapeHtml(p.id)}" ${p.id === item.profesor_id ? "selected" : ""}>${escapeHtml(p.nombre)} (${escapeHtml(p.email)})</option>`,
+                    )
+                    .join("");
+                return `<select class="select-profesor" data-fuente="${escapeHtml(fuente)}" data-id="${escapeHtml(item.id)}" data-actual="${escapeHtml(item.profesor_id ?? "")}" aria-label="Profesor asignado">
+                    <option value="" ${item.profesor_id ? "" : "selected"}>Sin asignar</option>
+                    ${opciones}
+                </select>`;
+            }
+
+            document.addEventListener("change", async (event) => {
+                const select = event.target.closest(".select-profesor");
+                if (!select) return;
+
+                const { fuente, id, actual } = select.dataset;
+                select.disabled = true;
+                try {
+                    await guardarProfesorAyudantia(
+                        fuente,
+                        id,
+                        select.value ? Number(select.value) : null,
+                    );
+                    select.classList.add("guardado");
+                    setTimeout(() => select.classList.remove("guardado"), 1500);
+                } catch (err) {
+                    select.value = actual;
+                    alert(`Error: ${err.message}`);
+                    console.error("asignarProfesor:", err);
+                } finally {
+                    select.disabled = false;
+                }
+            });
+
             // ── Render tablas ─────────────────────────────────────────────────────────
 
             function renderDocentes(rows) {
                 ayudantiasDocenteActivas = Array.isArray(rows) ? rows : [];
+                renderPanelRamosProfesor();
                 if (!rows || rows.length === 0) {
                     tablaDocenteBody.innerHTML = renderEmptyRow(
                         "No hay ayudantías docentes registradas",
-                        10,
+                        COLUMNAS_TABLA,
                     );
                     return;
                 }
@@ -1283,6 +1738,7 @@
             <td>${formatDate(item.termino)}</td>
             <td>${escapeHtml(item.horas)}</td>
             <td>${renderEstadoBadge(item.estado)}</td>
+            <td>${renderSelectProfesor("docente", item)}</td>
             <td>
               <button class="btn-eliminar"
                 onclick="eliminarDocente(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
@@ -1296,10 +1752,12 @@
             }
 
             function renderAdministrativas(rows) {
+                ayudantiasAdministrativas = Array.isArray(rows) ? rows : [];
+                renderPanelRamosProfesor();
                 if (!rows || rows.length === 0) {
                     tablaAdministrativaBody.innerHTML = renderEmptyRow(
                         "No hay ayudantías administrativas registradas",
-                        10,
+                        COLUMNAS_TABLA,
                     );
                     return;
                 }
@@ -1316,6 +1774,7 @@
             <td>${formatDate(item.termino)}</td>
             <td>${escapeHtml(item.horas)}</td>
             <td>${renderEstadoBadge(item.estado)}</td>
+            <td>${renderSelectProfesor("administrativa", item)}</td>
             <td>
               <button class="btn-eliminar"
                 onclick="eliminarAdministrativa(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
@@ -1331,7 +1790,10 @@
             // ── Carga inicial ─────────────────────────────────────────────────────────
 
             async function cargarDocentes() {
-                tablaDocenteBody.innerHTML = renderEmptyRow("Cargando...", 10);
+                tablaDocenteBody.innerHTML = renderEmptyRow(
+                    "Cargando...",
+                    COLUMNAS_TABLA,
+                );
                 try {
                     const res = await fetch("/api/admin/ayudantias/docente", {
                         credentials: "same-origin",
@@ -1349,7 +1811,7 @@
                 } catch (err) {
                     tablaDocenteBody.innerHTML = renderEmptyRow(
                         err.message,
-                        10,
+                        COLUMNAS_TABLA,
                     );
                     console.error("cargarDocentes:", err);
                 }
@@ -1358,7 +1820,7 @@
             async function cargarAdministrativas() {
                 tablaAdministrativaBody.innerHTML = renderEmptyRow(
                     "Cargando...",
-                    10,
+                    COLUMNAS_TABLA,
                 );
                 try {
                     const res = await fetch(
@@ -1379,7 +1841,7 @@
                 } catch (err) {
                     tablaAdministrativaBody.innerHTML = renderEmptyRow(
                         err.message,
-                        10,
+                        COLUMNAS_TABLA,
                     );
                     console.error("cargarAdministrativas:", err);
                 }
@@ -1566,8 +2028,10 @@
             // ── Arranque ──────────────────────────────────────────────────────────────
 
             cargarCatalogoAsignaturas();
-            cargarDocentes();
-            cargarAdministrativas();
+            cargarProfesores().then(() => {
+                cargarDocentes();
+                cargarAdministrativas();
+            });
         </script>
 
         <script src="/template_tabla/js/jquery.min.js"></script>

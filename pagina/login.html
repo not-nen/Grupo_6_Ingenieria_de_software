@@ -175,17 +175,6 @@
                     return;
                 }
 
-                if (data.currentUser) {
-                    localStorage.setItem(
-                        "currentUser",
-                        JSON.stringify(data.currentUser),
-                    );
-                    sessionStorage.setItem(
-                        "currentUser",
-                        JSON.stringify(data.currentUser),
-                    );
-                }
-
                 window.location.href = data.redirect;
             }
 
