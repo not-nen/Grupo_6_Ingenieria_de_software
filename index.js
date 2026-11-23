@@ -1516,7 +1516,7 @@ const TRANSICIONES_POSTULACION = {
       ),
   },
   aceptar: {
-    origen: ["Seleccionado entrevista"],
+    origen: ["Pendiente", "Seleccionado entrevista"],
     destino: () => ({ estado: "Aceptado", respuesta: "Aceptado" }),
     mensaje: "Ayudante aceptado y notificado",
     alCompletar: ({ post, profesor }) => {
