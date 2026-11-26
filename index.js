@@ -21,9 +21,30 @@ const upload = multer({
   limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
 });
 
-app.use(express.static(path.join(__dirname, "pagina")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Páginas HTML protegidas por rol (incluye las que servirían express.static).
+const PAGINAS_CON_SESION = {
+  "/estudiante": "estudiante",
+  "/profesor": "profesor",
+  "/admin": "administrador",
+  "/postula-docente": "estudiante",
+  "/postula-administrativa": "estudiante",
+  "/ayudantias-disponibles.html": "estudiante",
+  "/ayudantias-disponibles": "estudiante",
+};
+
+app.use((req, res, next) => {
+  const role = PAGINAS_CON_SESION[req.path];
+  if (!role) return next();
+  if (!getCurrentUserFromRequest(req, role)) {
+    return res.redirect("/");
+  }
+  return next();
+});
+
+app.use(express.static(path.join(__dirname, "pagina")));
 
 async function initDb() {
   const db = crearPoolEsquema();
@@ -256,6 +277,7 @@ async function importarArchivosDeUploads(client, tabla) {
 const CODIGO_ON_DELETE = { CASCADE: "c", RESTRICT: "r" };
 
 async function asegurarFk(client, tabla, columna, tablaReferida, onDelete) {
+  const deseado = CODIGO_ON_DELETE[onDelete];
   const fks = await client.query(
     `SELECT c.conname, c.confdeltype
      FROM pg_constraint c
@@ -263,13 +285,22 @@ async function asegurarFk(client, tabla, columna, tablaReferida, onDelete) {
      WHERE c.conrelid = $1::regclass AND c.contype = 'f' AND att.attname = $2`,
     [tabla, columna],
   );
-  if (fks.rows.some((fk) => fk.confdeltype === CODIGO_ON_DELETE[onDelete])) return;
+  // Solo se considera lista si TODAS las FK de la columna ya tienen el ON DELETE pedido.
+  if (
+    fks.rowCount > 0 &&
+    fks.rows.every((fk) => fk.confdeltype === deseado)
+  ) {
+    return;
+  }
   for (const fk of fks.rows) {
     await client.query(`ALTER TABLE ${tabla} DROP CONSTRAINT "${fk.conname}"`);
   }
   await client.query(
     `ALTER TABLE ${tabla} ADD CONSTRAINT ${tabla}_${columna}_fkey
      FOREIGN KEY (${columna}) REFERENCES ${tablaReferida}(id) ON DELETE ${onDelete}`,
+  );
+  console.log(
+    `Migración: FK ${tabla}.${columna} → ${tablaReferida}(id) ON DELETE ${onDelete}`,
   );
 }
 
@@ -779,17 +810,33 @@ async function insertarPostulacionConArchivos({
     tamano: file.size,
     contenido: file.buffer.toString("base64"),
   }));
-  const insertResult = await pool.query(
-    `INSERT INTO ${tabla}
-     (${columnaAyudantia}, ayudante_id, motivacion, archivos, estado, respuesta)
-     SELECT a.id, $2, $3, $4::jsonb, 'Pendiente', 'Pendiente'
-     FROM ${tablaAyudantias} a
-     WHERE a.id = $1 AND a.estado = 'Disponible'
-     FOR SHARE
-     RETURNING id`,
-    [Number(ayudantiaId), estudianteId, motivacion, JSON.stringify(payload)],
-  );
-  return insertResult.rows[0]?.id ?? null;
+  // Transacción: FOR SHARE solo vale dentro de un BEGIN; si falla, no queda fila parcial.
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const insertResult = await client.query(
+      `INSERT INTO ${tabla}
+       (${columnaAyudantia}, ayudante_id, motivacion, archivos, estado, respuesta)
+       SELECT a.id, $2, $3, $4::jsonb, 'Pendiente', 'Pendiente'
+       FROM ${tablaAyudantias} a
+       WHERE a.id = $1 AND a.estado = 'Disponible'
+       FOR SHARE
+       RETURNING id`,
+      [Number(ayudantiaId), estudianteId, motivacion, JSON.stringify(payload)],
+    );
+    const id = insertResult.rows[0]?.id ?? null;
+    if (id === null) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    await client.query("COMMIT");
+    return id;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 function getOrderClause(orderBy) {

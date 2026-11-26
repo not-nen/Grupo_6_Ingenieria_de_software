@@ -6,8 +6,15 @@
             name="viewport"
             content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+        <link rel="stylesheet" href="/responsive.css" />
+        <link rel="stylesheet" href="/site-header.css" />
         <title>Postula Docente</title>
         <style>
+            :root {
+                --header-bg: #2e8322;
+                --header-bg-hover: #25681b;
+            }
+
             body {
                 margin: 0;
                 min-height: 100vh;
@@ -127,6 +134,16 @@
         </style>
     </head>
     <body>
+        <header class="site-header">
+            <div class="site-header-inner">
+                <p class="site-header-title">
+                    Plataforma de ayudantías re-unificada
+                </p>
+                <a class="site-header-logout" href="/" id="logoutBtn"
+                    >Cerrar Sesión</a
+                >
+            </div>
+        </header>
         <main class="wrap">
             <section class="card">
                 <h1>Postulación Ayudantía Docente</h1>
@@ -218,6 +235,10 @@
 
         <script src="/utils.js"></script>
         <script>
+            document.getElementById("logoutBtn")?.addEventListener("click", () => {
+                document.cookie =
+                    "sesion_estudiante=; Max-Age=0; Path=/; SameSite=Lax";
+            });
             const form = document.getElementById("postulaDocenteForm");
             const buscadorAyudantia =
                 document.getElementById("buscadorAyudantia");

@@ -6,6 +6,8 @@
             name="viewport"
             content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+        <link rel="stylesheet" href="/responsive.css" />
+        <link rel="stylesheet" href="/site-header.css" />
         <title>Ayudantías disponibles</title>
         <style>
             :root {
@@ -13,6 +15,8 @@
                 --accent-green-hover: #21451b;
                 --border: #d8e0e6;
                 --muted: #6b7280;
+                --header-bg: #668c61;
+                --header-bg-hover: #21451b;
             }
             * {
                 box-sizing: border-box;
@@ -154,60 +158,23 @@
             }
 
             @media (max-width: 720px) {
-                .filters {
-                    grid-template-columns: 1fr;
-                }
                 .count {
                     padding-bottom: 0;
-                }
-                table,
-                thead,
-                tbody,
-                tr,
-                td {
-                    display: block;
-                    width: 100%;
-                }
-                thead {
-                    display: none;
-                }
-                tbody tr {
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    margin-bottom: 10px;
-                    padding: 6px 10px;
-                }
-                td {
-                    border: none;
-                    border-bottom: 1px dashed #e5e7eb;
-                    text-align: right;
-                    padding: 6px 0;
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 12px;
-                }
-                td:last-child {
-                    border-bottom: none;
-                }
-                td.left {
-                    text-align: right;
-                }
-                td::before {
-                    content: attr(data-label);
-                    font-weight: 700;
-                    color: var(--muted);
-                    text-align: left;
-                }
-                .empty td {
-                    justify-content: center;
-                }
-                .empty td::before {
-                    content: none;
                 }
             }
         </style>
     </head>
     <body>
+        <header class="site-header">
+            <div class="site-header-inner">
+                <p class="site-header-title">
+                    Plataforma de ayudantías re-unificada
+                </p>
+                <a class="site-header-logout" href="/" id="logoutBtn"
+                    >Cerrar Sesión</a
+                >
+            </div>
+        </header>
         <main class="wrap">
             <section class="card">
                 <h1>Ayudantías disponibles</h1>
@@ -254,7 +221,7 @@
                 </div>
 
                 <div class="table-wrap">
-                    <table>
+                    <table class="tabla-adaptable">
                         <thead id="tablaHead"></thead>
                         <tbody id="tablaBody">
                             <tr class="empty">
@@ -456,6 +423,10 @@
             buscador.addEventListener("input", render);
             filtroSede.addEventListener("change", render);
 
+            document.getElementById("logoutBtn")?.addEventListener("click", () => {
+                document.cookie =
+                    "sesion_estudiante=; Max-Age=0; Path=/; SameSite=Lax";
+            });
             cargar();
         </script>
     </body>

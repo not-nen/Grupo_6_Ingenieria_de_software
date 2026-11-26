@@ -18,11 +18,15 @@
             href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
         />
         <link rel="stylesheet" href="/template_tabla/css/style.css" />
+        <link rel="stylesheet" href="/responsive.css" />
+        <link rel="stylesheet" href="/site-header.css" />
         <style>
             :root {
                 /* Color del panel: edita estas dos variables */
                 --dashboard-accent: #6b7280;
                 --dashboard-accent-hover: #4b5563;
+                --header-bg: #6b7280;
+                --header-bg-hover: #4b5563;
                 --accent-green: var(--dashboard-accent);
                 --accent-green-hover: var(--dashboard-accent-hover);
                 --accent-red: #dc2626;
@@ -359,13 +363,6 @@
                 background: var(--accent-red-hover);
             }
 
-            .logout-btn {
-                position: fixed;
-                left: 16px;
-                bottom: 16px;
-                z-index: 50;
-            }
-
             /* ---- create form ---- */
             .form-crear {
                 background: #f8fafc;
@@ -483,10 +480,19 @@
         </style>
     </head>
     <body>
+        <header class="site-header">
+            <div class="site-header-inner">
+                <p class="site-header-title">
+                    Plataforma de ayudantías re-unificada
+                </p>
+                <a class="site-header-logout" href="/" id="logoutBtn"
+                    >Cerrar Sesión</a
+                >
+            </div>
+        </header>
         <section class="ftco-section">
             <div class="container-fluid px-2 px-md-4">
                 <p class="page-title">Panel Administrador</p>
-                <a class="btn-admin logout-btn" href="/">Cerrar Sesión</a>
 
                 <div class="row">
                     <div class="col-12">
@@ -546,7 +552,7 @@
                                             Ramos asignados
                                         </p>
                                         <div class="table-responsive-wrap">
-                                            <table class="table tabla-admin tbl-ramos">
+                                            <table class="table tabla-admin tbl-ramos tabla-adaptable">
                                                 <colgroup>
                                                     <col class="col-rp-tipo" />
                                                     <col class="col-rp-codigo" />
@@ -837,7 +843,7 @@
                                         </h6>
                                         <div class="table-responsive-wrap">
                                             <table
-                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-docente"
+                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-docente tabla-adaptable"
                                             >
                                                 <colgroup>
                                                     <col class="col-codigo" />
@@ -1091,7 +1097,7 @@
                                         <!-- Tabla administrativas -->
                                         <div class="table-responsive-wrap">
                                             <table
-                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-adm"
+                                                class="table table-bordered table-hover mb-0 tabla-admin tbl-adm tabla-adaptable"
                                             >
                                                 <colgroup>
                                                     <col
@@ -1546,11 +1552,11 @@
                           .map(
                               (a) => `
           <tr>
-            <td>${a.tipo}</td>
-            <td>${escapeHtml(a.item.codigo)}</td>
-            <td>${escapeHtml(a.nombre)}</td>
-            <td>${renderEstadoBadge(a.item.estado)}</td>
-            <td>
+            <td data-label="Tipo">${a.tipo}</td>
+            <td data-label="Código">${escapeHtml(a.item.codigo)}</td>
+            <td data-label="Ramo">${escapeHtml(a.nombre)}</td>
+            <td data-label="Estado">${renderEstadoBadge(a.item.estado)}</td>
+            <td data-label="Acción">
               <button type="button" class="btn-eliminar" data-rp-accion="quitar"
                 data-fuente="${a.fuente}" data-id="${escapeHtml(a.item.id)}">Quitar</button>
             </td>
@@ -1729,17 +1735,17 @@
                     .map(
                         (item) => `
           <tr>
-            <td>${escapeHtml(item.codigo)}</td>
-            <td>${escapeHtml(item.asignatura)}</td>
-            <td>${escapeHtml(item.paralelo)}</td>
-            <td>${escapeHtml(item.emplazamiento)}</td>
-            <td>${escapeHtml(item.departamento)}</td>
-            <td>${formatDate(item.inicio)}</td>
-            <td>${formatDate(item.termino)}</td>
-            <td>${escapeHtml(item.horas)}</td>
-            <td>${renderEstadoBadge(item.estado)}</td>
-            <td>${renderSelectProfesor("docente", item)}</td>
-            <td>
+            <td data-label="Código">${escapeHtml(item.codigo)}</td>
+            <td data-label="Asignatura">${escapeHtml(item.asignatura)}</td>
+            <td data-label="Paralelo">${escapeHtml(item.paralelo)}</td>
+            <td data-label="Sede">${escapeHtml(item.emplazamiento)}</td>
+            <td data-label="Departamento">${escapeHtml(item.departamento)}</td>
+            <td data-label="Inicio">${formatDate(item.inicio)}</td>
+            <td data-label="Término">${formatDate(item.termino)}</td>
+            <td data-label="Horas">${escapeHtml(item.horas)}</td>
+            <td data-label="Estado">${renderEstadoBadge(item.estado)}</td>
+            <td data-label="Profesor">${renderSelectProfesor("docente", item)}</td>
+            <td data-label="Acciones">
               <button class="btn-eliminar"
                 onclick="eliminarDocente(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
                 Eliminar
@@ -1765,17 +1771,17 @@
                     .map(
                         (item) => `
           <tr>
-            <td>${escapeHtml(item.codigo)}</td>
-            <td>${escapeHtml(item.glosa)}</td>
-            <td>${escapeHtml(item.emplazamiento)}</td>
-            <td>${escapeHtml(item.departamento)}</td>
-            <td>${escapeHtml(item.tipo_ayudantia)}</td>
-            <td>${formatDate(item.inicio)}</td>
-            <td>${formatDate(item.termino)}</td>
-            <td>${escapeHtml(item.horas)}</td>
-            <td>${renderEstadoBadge(item.estado)}</td>
-            <td>${renderSelectProfesor("administrativa", item)}</td>
-            <td>
+            <td data-label="Código">${escapeHtml(item.codigo)}</td>
+            <td data-label="Glosa">${escapeHtml(item.glosa)}</td>
+            <td data-label="Sede">${escapeHtml(item.emplazamiento)}</td>
+            <td data-label="Departamento">${escapeHtml(item.departamento)}</td>
+            <td data-label="Tipo">${escapeHtml(item.tipo_ayudantia)}</td>
+            <td data-label="Inicio">${formatDate(item.inicio)}</td>
+            <td data-label="Término">${formatDate(item.termino)}</td>
+            <td data-label="Horas">${escapeHtml(item.horas)}</td>
+            <td data-label="Estado">${renderEstadoBadge(item.estado)}</td>
+            <td data-label="Profesor">${renderSelectProfesor("administrativa", item)}</td>
+            <td data-label="Acciones">
               <button class="btn-eliminar"
                 onclick="eliminarAdministrativa(${escapeHtml(item.id)}, '${escapeHtml(item.codigo)}')">
                 Eliminar
@@ -2027,6 +2033,10 @@
 
             // ── Arranque ──────────────────────────────────────────────────────────────
 
+            document.getElementById("logoutBtn")?.addEventListener("click", () => {
+                document.cookie =
+                    "sesion_administrador=; Max-Age=0; Path=/; SameSite=Lax";
+            });
             cargarCatalogoAsignaturas();
             cargarProfesores().then(() => {
                 cargarDocentes();

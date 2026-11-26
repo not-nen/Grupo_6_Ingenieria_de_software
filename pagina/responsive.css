@@ -1,0 +1,145 @@
+/* RS10: adaptación a pantallas chicas sin cambiar la apariencia en escritorio.
+   En móvil, las tablas anchas pasan a tarjetas con etiqueta por fila (data-label). */
+
+@media (max-width: 768px) {
+  .table-responsive-wrap,
+  .table-scroll,
+  .table-wrap {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    max-width: 100%;
+  }
+
+  /* El template fuerza min-width: 1000px en .table; en móvil lo anulamos. */
+  table.tabla-adaptable,
+  table.tabla-adaptable.table {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  table.tabla-adaptable,
+  table.tabla-adaptable thead,
+  table.tabla-adaptable tbody,
+  table.tabla-adaptable tr,
+  table.tabla-adaptable th,
+  table.tabla-adaptable td {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  table.tabla-adaptable colgroup,
+  table.tabla-adaptable thead {
+    display: none;
+  }
+
+  table.tabla-adaptable tbody tr {
+    border: 1px solid #d9e2ec;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: #fff;
+  }
+
+  table.tabla-adaptable tbody tr.empty-state,
+  table.tabla-adaptable tbody tr.empty {
+    border-style: dashed;
+  }
+
+  table.tabla-adaptable td {
+    border: none !important;
+    border-bottom: 1px dashed #e5e7eb !important;
+    text-align: right !important;
+    padding: 6px 0 !important;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100% !important;
+    max-width: none !important;
+    white-space: normal !important;
+  }
+
+  table.tabla-adaptable td:last-child {
+    border-bottom: none !important;
+  }
+
+  table.tabla-adaptable td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #6b7280;
+    text-align: left;
+    flex: 0 0 42%;
+    max-width: 42%;
+  }
+
+  table.tabla-adaptable tr.empty-state td,
+  table.tabla-adaptable tr.empty td {
+    justify-content: center;
+    text-align: center !important;
+    border-bottom: none !important;
+  }
+
+  table.tabla-adaptable tr.empty-state td::before,
+  table.tabla-adaptable tr.empty td::before {
+    content: none;
+  }
+
+  table.tabla-adaptable td .acciones,
+  table.tabla-adaptable td select {
+    width: auto;
+    max-width: 58%;
+    margin-left: auto;
+  }
+
+  table.tabla-adaptable td select {
+    width: 100%;
+  }
+
+  .filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .top-actions,
+  .actions-row {
+    justify-content: stretch;
+  }
+
+  .top-actions .btn-postular,
+  .actions-row .btn-postular,
+  .top-actions .btn-admin,
+  .actions-row .btn-admin {
+    width: 100%;
+    text-align: center;
+  }
+
+  .cierre-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cierre-bar .accion-btn {
+    width: 100%;
+  }
+
+  .accordion-btn {
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .ftco-section .container-fluid {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .card-body {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

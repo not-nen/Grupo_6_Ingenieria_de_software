@@ -6,8 +6,15 @@
             name="viewport"
             content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+        <link rel="stylesheet" href="/responsive.css" />
+        <link rel="stylesheet" href="/site-header.css" />
         <title>Panel Profesor</title>
         <style>
+            :root {
+                --header-bg: #2e8322;
+                --header-bg-hover: #25681b;
+            }
+
             body {
                 margin: 0;
                 background: #f3f5f7;
@@ -259,12 +266,6 @@
                 transform: translateY(-1px);
             }
 
-            .logout-btn {
-                position: fixed;
-                left: 16px;
-                bottom: 16px;
-                z-index: 50;
-            }
 
             @media (max-width: 900px) {
                 .filters {
@@ -274,6 +275,16 @@
         </style>
     </head>
     <body>
+        <header class="site-header">
+            <div class="site-header-inner">
+                <p class="site-header-title">
+                    Plataforma de ayudantías re-unificada
+                </p>
+                <a class="site-header-logout" href="/" id="logoutBtn"
+                    >Cerrar Sesión</a
+                >
+            </div>
+        </header>
         <main class="layout">
             <section class="card">
                 <h1>Panel Profesor</h1>
@@ -317,12 +328,15 @@
                     <div id="seleccionadosContainer"></div>
                 </div>
 
-                <a class="btn-postular logout-btn" href="/">Cerrar Sesión</a>
             </section>
         </main>
 
         <script src="/utils.js"></script>
         <script>
+            document.getElementById("logoutBtn")?.addEventListener("click", () => {
+                document.cookie =
+                    "sesion_profesor=; Max-Age=0; Path=/; SameSite=Lax";
+            });
             const filtroForm = document.getElementById("filtroForm");
             const ramoSelect = document.getElementById("ramoSelect");
             const orderSelect = document.getElementById("orderSelect");
@@ -486,7 +500,7 @@
                 }
 
                 return `
-          <div class="table-scroll"><table>
+          <div class="table-scroll"><table class="tabla-adaptable">
             <thead>
               <tr>
                 ${showAsignatura ? "<th>Asignatura/Glosa</th>" : ""}
@@ -504,14 +518,14 @@
                   .map(
                       (item) => `
                 <tr>
-                  ${showAsignatura ? `<td>${escapeHtml(item.ramo || "-")}</td>` : ""}
-                  <td>${celdaEstudiante(item)}</td>
-                  <td>${escapeHtml(item.email_estudiante)}</td>
-                  <td>${escapeHtml(item.motivacion)}</td>
-                  <td>${celdaDocumentos(item)}</td>
-                  <td>${badgeEstado(item.estado)}</td>
-                  <td>${escapeHtml(new Date(item.fecha_estado).toLocaleString())}</td>
-                  <td>${celdaAcciones(item)}</td>
+                  ${showAsignatura ? `<td data-label="Asignatura/Glosa">${escapeHtml(item.ramo || "-")}</td>` : ""}
+                  <td data-label="Estudiante">${celdaEstudiante(item)}</td>
+                  <td data-label="Email">${escapeHtml(item.email_estudiante)}</td>
+                  <td data-label="Motivación">${escapeHtml(item.motivacion)}</td>
+                  <td data-label="Documentos">${celdaDocumentos(item)}</td>
+                  <td data-label="Estado">${badgeEstado(item.estado)}</td>
+                  <td data-label="Fecha Estado">${escapeHtml(new Date(item.fecha_estado).toLocaleString())}</td>
+                  <td data-label="Acción">${celdaAcciones(item)}</td>
                 </tr>
               `,
                   )
