@@ -277,9 +277,12 @@
     <body>
         <header class="site-header">
             <div class="site-header-inner">
-                <p class="site-header-title">
-                    Plataforma de ayudantías re-unificada
-                </p>
+                <div class="site-header-left">
+                    <p class="site-header-title">
+                        Plataforma de ayudantías re-unificada
+                    </p>
+                    <p class="site-header-welcome" id="headerWelcome"></p>
+                </div>
                 <a class="site-header-logout" href="/" id="logoutBtn"
                     >Cerrar Sesión</a
                 >
@@ -337,6 +340,13 @@
                 document.cookie =
                     "sesion_profesor=; Max-Age=0; Path=/; SameSite=Lax";
             });
+            (function mostrarBienvenida() {
+                const user = getCurrentUser("profesor");
+                const el = document.getElementById("headerWelcome");
+                if (el && user?.nombre) {
+                    el.textContent = `Bienvenido/a ${user.nombre}`;
+                }
+            })();
             const filtroForm = document.getElementById("filtroForm");
             const ramoSelect = document.getElementById("ramoSelect");
             const orderSelect = document.getElementById("orderSelect");

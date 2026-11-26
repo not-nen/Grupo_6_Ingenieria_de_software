@@ -148,10 +148,11 @@
             }
             .back {
                 display: inline-block;
-                margin-top: 14px;
+                margin: 0 0 10px;
                 color: var(--accent-green-hover);
                 font-weight: 700;
                 text-decoration: none;
+                font-size: 0.92rem;
             }
             .error {
                 color: #7f1d1d;
@@ -177,6 +178,7 @@
         </header>
         <main class="wrap">
             <section class="card">
+                <a class="back" href="/estudiante">Volver</a>
                 <h1>Ayudantías disponibles</h1>
                 <p class="sub">
                     Ayudantías abiertas actualmente para postular.
@@ -230,8 +232,6 @@
                         </tbody>
                     </table>
                 </div>
-
-                <a class="back" href="/estudiante">Volver</a>
             </section>
         </main>
 
@@ -361,7 +361,7 @@
                             ? '<span class="badge">Ya postulaste</span>'
                             : avisoLimite
                               ? `<span class="badge" title="${escapeHtml(avisoLimite)}">Máximo de ayudantías alcanzado</span>`
-                              : `<a class="btn" href="${URL_POSTULAR[tipoActual]}">Postular</a>`;
+                              : `<a class="btn" href="${URL_POSTULAR[tipoActual]}?ayudantiaId=${encodeURIComponent(i.id)}">Postular</a>`;
                         return `<tr>${celdas}<td data-label="Acción">${accion}</td></tr>`;
                     })
                     .join("");

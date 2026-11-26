@@ -11,8 +11,10 @@
         <title>Postula Administrativa</title>
         <style>
             :root {
-                --header-bg: #2e8322;
-                --header-bg-hover: #25681b;
+                --accent-green: #668c61;
+                --accent-green-hover: #21451b;
+                --header-bg: #668c61;
+                --header-bg-hover: #21451b;
             }
 
             body {
@@ -75,13 +77,13 @@
             button {
                 margin-top: 8px;
                 border: none;
-                background: #2e8322;
+                background: var(--accent-green);
                 color: #fff;
                 font-weight: 700;
                 cursor: pointer;
             }
             button:hover {
-                background: #25681b;
+                background: var(--accent-green-hover);
             }
             .status {
                 margin-top: 10px;
@@ -94,7 +96,7 @@
             .back {
                 display: inline-block;
                 margin-top: 14px;
-                color: #25681b;
+                color: var(--accent-green-hover);
                 font-weight: 700;
                 text-decoration: none;
             }
@@ -110,7 +112,7 @@
                 transition: border-color 0.2s;
             }
             .file-input-wrapper:hover {
-                border-color: #2e8322;
+                border-color: var(--accent-green);
             }
             .file-input-wrapper input[type="file"] {
                 border: none;
@@ -253,6 +255,9 @@
             const statusEl = document.getElementById("status");
             let ayudantiasDisponibles = [];
             let archivosElegidos = [];
+            const ayudantiaPreseleccionada = new URLSearchParams(
+                window.location.search,
+            ).get("ayudantiaId");
 
             const MAX_FILE_MB = 15;
             const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
@@ -349,9 +354,29 @@
                                 `<option value="${item.id}">${item.glosa} | ${item.tipo_ayudantia} | ${item.emplazamiento} | ${item.horas} hrs</option>`,
                         )
                         .join("");
-                if (filtradas.some((item) => String(item.id) === previa)) {
-                    selectAyudantia.value = previa;
+                const preferida =
+                    previa ||
+                    (ayudantiaPreseleccionada
+                        ? String(ayudantiaPreseleccionada)
+                        : "");
+                if (
+                    preferida &&
+                    filtradas.some((item) => String(item.id) === preferida)
+                ) {
+                    selectAyudantia.value = preferida;
                 }
+            }
+
+            function aplicarAyudantiaDesdeUrl() {
+                if (!ayudantiaPreseleccionada) return;
+                const existe = ayudantiasDisponibles.some(
+                    (item) => String(item.id) === String(ayudantiaPreseleccionada),
+                );
+                if (!existe) return;
+                buscadorAyudantia.value = "";
+                filtroSede.value = "all";
+                renderAyudantias();
+                selectAyudantia.value = String(ayudantiaPreseleccionada);
             }
 
             async function parseJsonResponse(response) {
@@ -387,7 +412,11 @@
                     }
                     ayudantiasDisponibles = Array.isArray(data) ? data : [];
                     poblarFiltroSedes();
-                    renderAyudantias();
+                    if (ayudantiaPreseleccionada) {
+                        aplicarAyudantiaDesdeUrl();
+                    } else {
+                        renderAyudantias();
+                    }
                     if (ayudantiasDisponibles.length === 0) {
                         selectAyudantia.innerHTML =
                             '<option value="">No hay ayudantías disponibles</option>';
