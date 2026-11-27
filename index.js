@@ -8,7 +8,7 @@ const {
   enviarCorreoCierreAceptado,
 } = require("./mailer");
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
@@ -2046,7 +2046,7 @@ async function iniciar() {
   for (let intento = 1; intento <= INTENTOS_INIT_DB; intento++) {
     try {
       await initDb();
-      app.listen(port, () => {
+      app.listen(port, "0.0.0.0", () => {
         console.log(`App corriendo en http://localhost:${port}`);
       });
       return;
