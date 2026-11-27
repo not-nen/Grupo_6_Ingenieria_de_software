@@ -1,50 +1,89 @@
-const { Pool } = require('pg');
+const { Pool } = require("pg");
+
+// Quita espacios/comillas que a veces se pegan al copiar en Railway.
+function normalizarUrl(valor) {
+  if (valor == null) return null;
+  let url = String(valor).trim();
+  if (
+    (url.startsWith('"') && url.endsWith('"')) ||
+    (url.startsWith("'") && url.endsWith("'"))
+  ) {
+    url = url.slice(1, -1).trim();
+  }
+  return url || null;
+}
+
+function urlBaseDatos() {
+  return (
+    normalizarUrl(process.env.DATABASE_URL) ||
+    normalizarUrl(process.env.DATABASE_PRIVATE_URL) ||
+    normalizarUrl(process.env.POSTGRES_URL) ||
+    normalizarUrl(process.env.POSTGRES_PRIVATE_URL)
+  );
+}
+
+function urlEsquema() {
+  return (
+    normalizarUrl(process.env.DATABASE_URL_UNPOOLED) ||
+    normalizarUrl(process.env.DATABASE_URL_DIRECT) ||
+    urlBaseDatos()
+  );
+}
 
 // Con DATABASE_URL (Neon) se conecta por SSL; sin ella usa el Postgres local de
-// docker-compose. sslmode/channel_binding de la URL se reemplazan por `ssl: true`,
-// que ya verifica el certificado del servidor.
+// docker-compose. sslmode/channel_binding de la URL se reemplazan por `ssl: true`.
 function configuracionConexion(url) {
   if (!url) {
     return {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      host: process.env.DB_HOST || "postgres_db",
+      port: Number(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || "user",
+      password: process.env.DB_PASSWORD || "password",
+      database: process.env.DB_NAME || "mydb",
     };
   }
   const parsed = new URL(url);
-  parsed.searchParams.delete('sslmode');
-  parsed.searchParams.delete('channel_binding');
+  parsed.searchParams.delete("sslmode");
+  parsed.searchParams.delete("channel_binding");
   return { connectionString: parsed.toString(), ssl: true };
 }
 
 function crearPool(url, opciones = {}) {
   const pool = new Pool({
     ...configuracionConexion(url),
-    // Holgura para el arranque en frío de Neon tras suspenderse por inactividad.
     connectionTimeoutMillis: 10000,
     ...opciones,
   });
-  // Sin este listener, una conexión inactiva que se corta (p. ej. la BD se detiene
-  // o Neon suspende el cómputo) emite un 'error' no manejado y termina Node.
-  pool.on('error', (err) => {
-    console.error('Conexión con la base de datos perdida:', err.message);
+  pool.on("error", (err) => {
+    console.error("Conexión con la base de datos perdida:", err.message);
   });
   return pool;
 }
 
-// Tráfico de la app: conexión con pooling de Neon (PgBouncer).
-const pool = crearPool(process.env.DATABASE_URL);
-
-// DDL y migraciones van por la conexión directa: PgBouncer en modo transacción
-// no conserva estado de sesión entre consultas.
-function crearPoolEsquema() {
-  return crearPool(
-    process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL,
-    { max: 1 },
+const databaseUrl = urlBaseDatos();
+if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+  if (!databaseUrl) {
+    console.error(
+      "Falta DATABASE_URL en Variables del servicio Railway. " +
+        "Agrégala (Neon pooled, sin comillas) y redespliega.",
+    );
+    process.exit(1);
+  }
+  console.log("DATABASE_URL detectada en Railway (Neon).");
+} else if (databaseUrl) {
+  console.log("DATABASE_URL detectada (Neon).");
+} else {
+  console.log(
+    "Sin DATABASE_URL: usando Postgres local (DB_HOST/postgres_db).",
   );
+}
+
+const pool = crearPool(databaseUrl);
+
+function crearPoolEsquema() {
+  return crearPool(urlEsquema(), { max: 1 });
 }
 
 module.exports = pool;
 module.exports.crearPoolEsquema = crearPoolEsquema;
+module.exports.urlBaseDatos = urlBaseDatos;

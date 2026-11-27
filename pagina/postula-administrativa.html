@@ -127,7 +127,35 @@
                 font-size: 0.85rem;
             }
             .file-list li {
-                padding: 3px 0;
+                padding: 4px 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+            }
+            .file-list .file-name {
+                flex: 1 1 auto;
+                min-width: 0;
+                word-break: break-word;
+            }
+            .file-list .btn-quitar-archivo {
+                flex: 0 0 auto;
+                width: auto !important;
+                max-width: max-content;
+                margin-top: 0 !important;
+                border: 1px solid #e5e7eb !important;
+                background: #fff !important;
+                color: #b91c1c !important;
+                border-radius: 4px;
+                padding: 2px 7px !important;
+                font-size: 0.7rem !important;
+                font-weight: 600;
+                line-height: 1.2;
+                cursor: pointer;
+            }
+            .file-list .btn-quitar-archivo:hover {
+                background: #fef2f2 !important;
+                color: #991b1b !important;
             }
             .file-item-error {
                 color: #b91c1c;
@@ -435,13 +463,25 @@
                     return;
                 }
                 listaArchivos.innerHTML = archivosElegidos
-                    .map((file) => {
+                    .map((file, indice) => {
                         const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
                         const excede = file.size > MAX_FILE_BYTES;
-                        return `<li${excede ? ' class="file-item-error"' : ""}>${file.name} (${sizeMB} MB)${excede ? " — supera el límite de 15 MB" : ""}</li>`;
+                        return `<li${excede ? ' class="file-item-error"' : ""}>
+                          <span class="file-name">${escapeHtml(file.name)} (${sizeMB} MB)${excede ? " — supera el límite de 15 MB" : ""}</span>
+                          <button type="button" class="btn-quitar-archivo" data-indice="${indice}">Quitar</button>
+                        </li>`;
                     })
                     .join("");
             }
+
+            listaArchivos.addEventListener("click", (event) => {
+                const boton = event.target.closest(".btn-quitar-archivo");
+                if (!boton) return;
+                const indice = Number(boton.dataset.indice);
+                if (!Number.isInteger(indice)) return;
+                archivosElegidos.splice(indice, 1);
+                actualizarListaArchivos();
+            });
 
             archivosInput.addEventListener("change", () => {
                 for (const file of archivosInput.files) {

@@ -3,6 +3,7 @@ services:
   app:
     build: .
     restart: unless-stopped
+    command: ["sh", "-c", "npx wait-port postgres_db:5432 && npm start"]
     ports:
       - "3000:3000"
     environment:
