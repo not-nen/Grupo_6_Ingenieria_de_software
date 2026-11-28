@@ -1983,7 +1983,7 @@
             async function eliminarDocente(id, codigo) {
                 if (
                     !confirm(
-                        `¿Eliminar la ayudantía docente "${codigo}"? Esta acción no se puede deshacer.`,
+                        `¿Eliminar la ayudantía docente "${codigo}"?\nSi está cerrada, también se borrará su historial de postulaciones. Si sigue abierta y tiene postulaciones, no se podrá eliminar.`,
                     )
                 )
                     return;
@@ -2011,7 +2011,7 @@
             async function eliminarAdministrativa(id, codigo) {
                 if (
                     !confirm(
-                        `¿Eliminar la ayudantía administrativa "${codigo}"? Esta acción no se puede deshacer.`,
+                        `¿Eliminar la ayudantía administrativa "${codigo}"?\nSi está cerrada, también se borrará su historial de postulaciones. Si sigue abierta y tiene postulaciones, no se podrá eliminar.`,
                     )
                 )
                     return;

@@ -2124,8 +2124,11 @@ app.post("/api/admin/ayudantias/administrativa", async (req, res) => {
 });
 
 // ── API Admin: eliminar ayudantías ───────────────────────────────────────────
+// Con postulaciones y ramo aún Disponible: se bloquea (integridad / historial activo).
+// Con ramo Cerrada: se borran primero las postulaciones y luego el ramo.
 for (const [fuente, config] of Object.entries(FUENTES_POSTULACION)) {
   app.delete(`/api/admin/ayudantias/${fuente}/:id`, async (req, res) => {
+    const client = await pool.connect();
     try {
       const admin = await obtenerUsuarioConRol(req, "administrador");
       if (!admin) {
@@ -2133,23 +2136,74 @@ for (const [fuente, config] of Object.entries(FUENTES_POSTULACION)) {
           .status(401)
           .json({ error: "Debe iniciar sesión como administrador" });
       }
-      const result = await pool.query(
-        `DELETE FROM ${config.tablaAyudantias} WHERE id = $1 RETURNING id`,
-        [Number(req.params.id)],
+
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ error: "Identificador no válido" });
+      }
+
+      await client.query("BEGIN");
+      const actual = await client.query(
+        `SELECT id, estado FROM ${config.tablaAyudantias} WHERE id = $1 FOR UPDATE`,
+        [id],
       );
-      if (result.rowCount === 0) {
+      if (actual.rowCount === 0) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ error: "Ayudantía no encontrada" });
       }
-      return res.json({ ok: true, message: "Ayudantía eliminada" });
+
+      const ayudantia = actual.rows[0];
+      const postulaciones = await client.query(
+        `SELECT COUNT(*)::int AS total FROM ${config.tablaPostulaciones}
+         WHERE ${config.columnaAyudantia} = $1`,
+        [id],
+      );
+      const totalPostulaciones = postulaciones.rows[0].total;
+
+      if (totalPostulaciones > 0 && ayudantia.estado !== "Cerrada") {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          error:
+            "No se puede eliminar: la ayudantía tiene postulaciones y sigue abierta. El profesor debe cerrar las postulaciones del ramo; después sí podrás eliminarla.",
+        });
+      }
+
+      if (totalPostulaciones > 0) {
+        await client.query(
+          `DELETE FROM ${config.tablaPostulaciones}
+           WHERE ${config.columnaAyudantia} = $1`,
+          [id],
+        );
+      }
+
+      const result = await client.query(
+        `DELETE FROM ${config.tablaAyudantias} WHERE id = $1 RETURNING id`,
+        [id],
+      );
+      if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Ayudantía no encontrada" });
+      }
+
+      await client.query("COMMIT");
+      return res.json({
+        ok: true,
+        message:
+          totalPostulaciones > 0
+            ? "Ayudantía cerrada eliminada junto con su historial de postulaciones"
+            : "Ayudantía eliminada",
+      });
     } catch (err) {
-      // 23001: la FK es ON DELETE RESTRICT; 23503: violación de FK genérica.
+      await client.query("ROLLBACK").catch(() => {});
       if (err.code === "23001" || err.code === "23503") {
         return res.status(409).json({
           error:
-            "No se puede eliminar: la ayudantía tiene postulaciones registradas. Para conservar ese historial, el profesor a cargo debe cerrar las postulaciones.",
+            "No se puede eliminar: la ayudantía todavía tiene postulaciones asociadas",
         });
       }
       return responderErrorServidor(res, err);
+    } finally {
+      client.release();
     }
   });
 }
