@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const pool = require("./db"); // Importar la conexión
 const { crearPoolEsquema } = require("./db");
 const {
@@ -12,6 +13,8 @@ const port = Number(process.env.PORT) || 3000;
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "grupo6-pau-session-dev-only";
 
 // Solo se lee para migrar postulaciones antiguas que guardaban el archivo en disco.
 const uploadsLegadoDir = path.join(__dirname, "pagina", "uploads");
@@ -24,24 +27,33 @@ const upload = multer({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Páginas HTML protegidas por rol (incluye las que servirían express.static).
+// Páginas HTML protegidas por rol (incluye variantes .html de express.static).
 const PAGINAS_CON_SESION = {
   "/estudiante": "estudiante",
+  "/estudiante.html": "estudiante",
   "/profesor": "profesor",
+  "/profesor.html": "profesor",
   "/admin": "administrador",
+  "/admin.html": "administrador",
   "/postula-docente": "estudiante",
+  "/postula-docente.html": "estudiante",
   "/postula-administrativa": "estudiante",
+  "/postula-administrativa.html": "estudiante",
   "/ayudantias-disponibles.html": "estudiante",
   "/ayudantias-disponibles": "estudiante",
 };
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const role = PAGINAS_CON_SESION[req.path];
   if (!role) return next();
-  if (!getCurrentUserFromRequest(req, role)) {
+  try {
+    const user = await obtenerUsuarioConRol(req, role);
+    if (!user) return res.redirect("/");
+    return next();
+  } catch (err) {
+    console.error("Error al validar sesión de página:", err);
     return res.redirect("/");
   }
-  return next();
 });
 
 app.use(express.static(path.join(__dirname, "pagina")));
@@ -451,18 +463,21 @@ async function asegurarRamoAbiertoUnico(client) {
 }
 
 // Bloquear la fila del estudiante serializa postulaciones y aceptaciones concurrentes del
-// mismo estudiante, así dos profesores que aceptan a la vez no lo dejan sobre el máximo.
-// Solo revisa operaciones nuevas: no toca a quien ya estuviera sobre el máximo.
+// mismo estudiante, así dos profesores que aceptan/entrevistan a la vez no lo dejan sobre el máximo.
 async function asegurarLimiteAyudantias(client) {
   await client.query(`
     CREATE OR REPLACE FUNCTION verificar_limite_ayudantias() RETURNS trigger AS $$
     BEGIN
-      IF TG_OP = 'UPDATE'
-         AND NOT (NEW.estado = 'Aceptado' AND OLD.estado IS DISTINCT FROM 'Aceptado') THEN
-        RETURN NEW;
+      IF TG_OP = 'UPDATE' THEN
+        IF NEW.estado IS NOT DISTINCT FROM OLD.estado THEN
+          RETURN NEW;
+        END IF;
+        IF NEW.estado NOT IN ('Aceptado', 'Seleccionado entrevista') THEN
+          RETURN NEW;
+        END IF;
       END IF;
       PERFORM 1 FROM estudiante WHERE id = NEW.ayudante_id FOR NO KEY UPDATE;
-      IF ${sqlAyudantiasAceptadas("NEW.ayudante_id")} >= ${MAX_AYUDANTIAS_ACEPTADAS} THEN
+      IF ${sqlCuposOcupados("NEW.ayudante_id", "NEW.id")} >= ${MAX_AYUDANTIAS_ACEPTADAS} THEN
         RAISE EXCEPTION 'El estudiante ya es ayudante en % ramos, el máximo permitido',
           ${MAX_AYUDANTIAS_ACEPTADAS}
           USING ERRCODE = 'check_violation', CONSTRAINT = '${RESTRICCION_LIMITE_AYUDANTIAS}';
@@ -845,14 +860,48 @@ function getOrderClause(orderBy) {
   return "p.created_at DESC";
 }
 
-// Una cookie por rol, para poder tener abiertas a la vez las vistas de estudiante,
-// profesor y administrador en el mismo navegador.
+// Una cookie firmada por rol, para poder tener abiertas a la vez las vistas de
+// estudiante, profesor y administrador sin que se pueda falsificar el JSON a mano.
 function nombreCookieSesion(role) {
   return `sesion_${role}`;
 }
 
+function firmarPayloadSesion(payload) {
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = crypto
+    .createHmac("sha256", SESSION_SECRET)
+    .update(body)
+    .digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function leerPayloadSesionFirmado(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
+  const expected = crypto
+    .createHmac("sha256", SESSION_SECRET)
+    .update(body)
+    .digest("base64url");
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (
+    sigBuf.length !== expectedBuf.length ||
+    !crypto.timingSafeEqual(sigBuf, expectedBuf)
+  ) {
+    return null;
+  }
+  try {
+    return JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  } catch (error) {
+    return null;
+  }
+}
+
 function buildCurrentUserCookie(currentUser) {
-  return `${nombreCookieSesion(currentUser.role)}=${encodeURIComponent(JSON.stringify(currentUser))}; Path=/; SameSite=Lax`;
+  const token = firmarPayloadSesion(currentUser);
+  return `${nombreCookieSesion(currentUser.role)}=${encodeURIComponent(token)}; Path=/; Max-Age=86400; SameSite=Lax`;
 }
 
 function getCurrentUserFromRequest(req, role) {
@@ -866,9 +915,8 @@ function getCurrentUserFromRequest(req, role) {
   }
 
   try {
-    const currentUser = JSON.parse(
-      decodeURIComponent(sesionCookie.substring(prefijo.length)),
-    );
+    const token = decodeURIComponent(sesionCookie.substring(prefijo.length));
+    const currentUser = leerPayloadSesionFirmado(token);
     return currentUser?.role === role ? currentUser : null;
   } catch (error) {
     return null;
@@ -892,16 +940,25 @@ const FUENTES_POSTULACION = {
 
 const ESTADOS_SELECCIONADOS = ["Seleccionado entrevista", "Aceptado"];
 
-// Un estudiante puede ser ayudante (postulación Aceptada) en a lo más 2 ramos, sumando
-// docentes y administrativas; con ese máximo ya no puede postular ni ser aceptado.
+// Cupos que cuentan para el máximo de 2: aceptadas o en entrevista (docente + admin).
 const MAX_AYUDANTIAS_ACEPTADAS = 2;
 const RESTRICCION_LIMITE_AYUDANTIAS = "limite_ayudantias_aceptadas";
 
-function sqlAyudantiasAceptadas(columnaEstudiante) {
+function sqlCuposOcupados(columnaEstudiante, excludeIdExpr = null) {
+  const excluir = excludeIdExpr
+    ? ` AND id IS DISTINCT FROM ${excludeIdExpr}`
+    : "";
   return `((SELECT COUNT(*) FROM postulaciones_docente
-            WHERE ayudante_id = ${columnaEstudiante} AND estado = 'Aceptado')
+            WHERE ayudante_id = ${columnaEstudiante}
+              AND estado IN ('Aceptado', 'Seleccionado entrevista')${excluir})
          + (SELECT COUNT(*) FROM postulaciones_administrativas
-            WHERE ayudante_id = ${columnaEstudiante} AND estado = 'Aceptado'))::int`;
+            WHERE ayudante_id = ${columnaEstudiante}
+              AND estado IN ('Aceptado', 'Seleccionado entrevista')${excluir}))::int`;
+}
+
+// Alias usado por migraciones/triggers previos.
+function sqlAyudantiasAceptadas(columnaEstudiante) {
+  return sqlCuposOcupados(columnaEstudiante);
 }
 
 function esErrorLimiteAyudantias(err) {
@@ -911,10 +968,16 @@ function esErrorLimiteAyudantias(err) {
   );
 }
 
-async function contarAyudantiasAceptadas(estudianteId) {
+async function contarAyudantiasAceptadas(estudianteId, excludePostulacionId = null) {
+  const excludeExpr =
+    excludePostulacionId == null ? null : "$2";
+  const params =
+    excludePostulacionId == null
+      ? [estudianteId]
+      : [estudianteId, excludePostulacionId];
   const result = await pool.query(
-    `SELECT ${sqlAyudantiasAceptadas("$1")} AS total`,
-    [estudianteId],
+    `SELECT ${sqlCuposOcupados("$1", excludeExpr)} AS total`,
+    params,
   );
   return Number(result.rows[0]?.total) || 0;
 }
@@ -1000,12 +1063,12 @@ async function cambiarEstadoPostulacion(req, estadosOrigen, destino) {
   }
 
   const { estado, respuesta, actualizarFecha = true } = destino(post);
-  if (estado === "Aceptado") {
-    const aceptadas = await contarAyudantiasAceptadas(post.ayudante_id);
-    if (aceptadas >= MAX_AYUDANTIAS_ACEPTADAS) {
+  if (ESTADOS_SELECCIONADOS.includes(estado)) {
+    const ocupadas = await contarAyudantiasAceptadas(post.ayudante_id, post.id);
+    if (ocupadas >= MAX_AYUDANTIAS_ACEPTADAS) {
       return {
         status: 409,
-        error: `${post.nombre_estudiante} ya es ayudante en ${MAX_AYUDANTIAS_ACEPTADAS} ramos, el máximo permitido`,
+        error: `${post.nombre_estudiante} ya tiene ${MAX_AYUDANTIAS_ACEPTADAS} ayudantías en entrevista o aceptadas, el máximo permitido`,
       };
     }
   }
@@ -1021,7 +1084,7 @@ async function cambiarEstadoPostulacion(req, estadosOrigen, destino) {
     if (!esErrorLimiteAyudantias(err)) throw err;
     return {
       status: 409,
-      error: `${post.nombre_estudiante} ya es ayudante en ${MAX_AYUDANTIAS_ACEPTADAS} ramos, el máximo permitido`,
+      error: `${post.nombre_estudiante} ya tiene ${MAX_AYUDANTIAS_ACEPTADAS} ayudantías en entrevista o aceptadas, el máximo permitido`,
     };
   }
   if (update.rowCount === 0) {
@@ -1147,6 +1210,12 @@ app.post("/api/login", async (req, res) => {
 
 app.get("/api/ayudantias/docente", async (req, res) => {
   try {
+    const estudiante = await obtenerUsuarioConRol(req, "estudiante");
+    if (!estudiante) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como estudiante" });
+    }
     const result = await pool.query(`
       SELECT id, codigo, asignatura, emplazamiento, departamento, paralelo, categoria, inicio, termino, horas
       FROM ayudantias_docente
@@ -1161,6 +1230,12 @@ app.get("/api/ayudantias/docente", async (req, res) => {
 
 app.get("/api/ayudantias/administrativa", async (req, res) => {
   try {
+    const estudiante = await obtenerUsuarioConRol(req, "estudiante");
+    if (!estudiante) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como estudiante" });
+    }
     const result = await pool.query(`
       SELECT id, codigo, modificado, glosa, emplazamiento, departamento, tipo_ayudantia, inicio, termino, horas
       FROM ayudantias_administrativas
@@ -1175,14 +1250,20 @@ app.get("/api/ayudantias/administrativa", async (req, res) => {
 
 app.get("/api/estudiante/postulaciones", async (req, res) => {
   try {
-    const currentUser = getCurrentUserFromRequest(req, "estudiante");
-    if (!currentUser || !currentUser.email) {
+    const estudiante = await obtenerUsuarioConRol(req, "estudiante");
+    if (!estudiante) {
       return res
         .status(401)
         .json({ error: "Debe iniciar sesión para ver sus postulaciones" });
     }
 
-    const email = String(currentUser.email).trim().toLowerCase();
+    const email = String(estudiante.email).trim().toLowerCase();
+    const currentUser = {
+      role: "estudiante",
+      id: estudiante.id,
+      nombre: estudiante.nombre,
+      email: estudiante.email,
+    };
 
     const docenteResult = await pool.query(
       `SELECT p.id AS postulacion_id,
@@ -1236,10 +1317,8 @@ app.get("/api/estudiante/postulaciones", async (req, res) => {
       [email],
     );
 
-    const ayudantiasAceptadas = [
-      ...docenteResult.rows,
-      ...administrativaResult.rows,
-    ].filter((p) => p.estado === "Aceptado").length;
+    // Cupos reales en BD (entrevista + aceptada), no el estado "visible" al estudiante.
+    const ayudantiasAceptadas = await contarAyudantiasAceptadas(estudiante.id);
 
     return res.json({
       docente: docenteResult.rows,
@@ -1766,8 +1845,14 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "pagina", "admin.html"));
 });
 
-app.get("/api/admin/catalogo-asignaturas", (req, res) => {
+app.get("/api/admin/catalogo-asignaturas", async (req, res) => {
   try {
+    const admin = await obtenerUsuarioConRol(req, "administrador");
+    if (!admin) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como administrador" });
+    }
     return res.json(loadCatalogoAsignaturas());
   } catch (err) {
     console.error(err);
@@ -1778,6 +1863,12 @@ app.get("/api/admin/catalogo-asignaturas", (req, res) => {
 // ── API Admin: listar ayudantías ─────────────────────────────────────────────
 app.get("/api/admin/ayudantias/docente", async (req, res) => {
   try {
+    const admin = await obtenerUsuarioConRol(req, "administrador");
+    if (!admin) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como administrador" });
+    }
     const result = await pool.query(
       "SELECT * FROM ayudantias_docente ORDER BY created_at DESC",
     );
@@ -1789,6 +1880,12 @@ app.get("/api/admin/ayudantias/docente", async (req, res) => {
 
 app.get("/api/admin/ayudantias/administrativa", async (req, res) => {
   try {
+    const admin = await obtenerUsuarioConRol(req, "administrador");
+    if (!admin) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como administrador" });
+    }
     const result = await pool.query(
       "SELECT * FROM ayudantias_administrativas ORDER BY created_at DESC",
     );
@@ -1901,6 +1998,12 @@ function responderErrorAyudantia(res, err) {
 // ── API Admin: crear ayudantía docente ───────────────────────────────────────
 app.post("/api/admin/ayudantias/docente", async (req, res) => {
   try {
+    const admin = await obtenerUsuarioConRol(req, "administrador");
+    if (!admin) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como administrador" });
+    }
     const {
       codigo,
       asignatura,
@@ -1962,6 +2065,12 @@ app.post("/api/admin/ayudantias/docente", async (req, res) => {
 // ── API Admin: crear ayudantía administrativa ────────────────────────────────
 app.post("/api/admin/ayudantias/administrativa", async (req, res) => {
   try {
+    const admin = await obtenerUsuarioConRol(req, "administrador");
+    if (!admin) {
+      return res
+        .status(401)
+        .json({ error: "Debe iniciar sesión como administrador" });
+    }
     const {
       codigo,
       glosa,
@@ -2018,6 +2127,12 @@ app.post("/api/admin/ayudantias/administrativa", async (req, res) => {
 for (const [fuente, config] of Object.entries(FUENTES_POSTULACION)) {
   app.delete(`/api/admin/ayudantias/${fuente}/:id`, async (req, res) => {
     try {
+      const admin = await obtenerUsuarioConRol(req, "administrador");
+      if (!admin) {
+        return res
+          .status(401)
+          .json({ error: "Debe iniciar sesión como administrador" });
+      }
       const result = await pool.query(
         `DELETE FROM ${config.tablaAyudantias} WHERE id = $1 RETURNING id`,
         [Number(req.params.id)],

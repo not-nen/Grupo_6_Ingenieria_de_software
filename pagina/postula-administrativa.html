@@ -266,6 +266,8 @@
 
         <script src="/utils.js"></script>
         <script>
+            requireSession("estudiante");
+
             document.getElementById("logoutBtn")?.addEventListener("click", () => {
                 document.cookie =
                     "sesion_estudiante=; Max-Age=0; Path=/; SameSite=Lax";

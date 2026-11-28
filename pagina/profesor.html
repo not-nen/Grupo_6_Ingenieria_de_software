@@ -336,6 +336,8 @@
 
         <script src="/utils.js"></script>
         <script>
+            requireSession("profesor");
+
             document.getElementById("logoutBtn")?.addEventListener("click", () => {
                 document.cookie =
                     "sesion_profesor=; Max-Age=0; Path=/; SameSite=Lax";
